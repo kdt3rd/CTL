@@ -62,6 +62,7 @@ add_definitions( -DPACKAGE="CTL" -DVERSION="${CTL_VERSION}" )
 add_subdirectory(doc)
 add_subdirectory(lib)
 add_subdirectory(ctlrender)
+add_subdirectory(ctlcc)
 add_subdirectory(OpenEXR_CTL)
 add_subdirectory(unittest EXCLUDE_FROM_ALL)
 
