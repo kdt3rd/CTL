@@ -52,6 +52,7 @@
 #include "CtlCodeType.h"
 #include <map>
 #include <vector>
+#include <set>
 
 namespace Ctl
 {
@@ -125,8 +126,13 @@ protected:
 						  std::string &postDecl,
 						  const ArrayTypePtr &array,
 						  CodeLContext &ctxt );
-	bool checkNeedInitInModuleInit( const ExprNodePtr &initV );
+	bool checkNeedInitInModuleInit( const ExprNodePtr &initV, bool deep = false );
+	bool isAllLiterals( const ExprNodePtr &v );
 
+	// returns true if there are any non-trivial constants
+	void extractLiteralConstants( const StatementNodePtr &consts,
+								  CodeLContext &ctxt );
+	
 	// might be useful in sub classing
 	std::string cleanName( const std::string &x );
 	std::string escapeLiteral( const std::string &s );
@@ -138,10 +144,15 @@ protected:
 	int myInElse;
 	int myInModuleInit;
 	int myInFunction;
+	int myDoForwardDecl;
 	InitType myCurInitType;
+	std::map<std::string, std::string> myGlobalLiterals;
 	std::map<std::string, std::string> myDefaultMappings;
 	std::vector< std::vector<std::string> > myCurModuleInit;
+	// functions that can't be inline...
+	std::set<std::string> myFuncsUsedInInit;
 	Module *myCurModule;
+	std::stringstream myForwardDecl;
 };
 
 }

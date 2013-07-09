@@ -69,6 +69,7 @@ CPPGenerator::CPPGenerator( bool cpp11 )
 		  myCPP11Mode( cpp11 ),
 		  myInElse( 0 ),
 		  myInModuleInit( 0 ), myInFunction( 0 ),
+		  myDoForwardDecl( 0 ),
 		  myCurInitType( NONE ), myCurModule( NULL )
 {
 }
@@ -213,15 +214,27 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 	Module *oldModule = myCurModule;
 	myCurModule = ctxt.module();
 
+	extractLiteralConstants( m.constants, ctxt );
 	pushStream( myCodeStream );
 
 	newlineAndIndent();
 	curStream() << "// Module " << ctxt.module()->name() << " ("
 				<< ctxt.fileName() << ")\n";
 	newlineAndIndent();
+
 	if ( m.constants )
 		curStream() << "////////// CONSTANTS //////////\n\n";
 	++myInModuleInit;
+	FunctionNodePtr function = m.functions;
+	++myDoForwardDecl;
+	while ( function )
+	{
+		function->generateCode( ctxt );
+		function = function->next;
+	}
+	--myDoForwardDecl;
+	newlineAndIndent();
+
 	myCurModuleInit.push_back( std::vector<std::string>() );
 	StatementNodePtr consts = m.constants;
 	while ( consts )
@@ -255,7 +268,8 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 		newlineAndIndent();
 		curStream() << "////////// FUNCTIONS //////////\n\n";
 	}
-	FunctionNodePtr function = m.functions;
+
+	function = m.functions;
 	while ( function )
 	{
 		function->generateCode( ctxt );
@@ -304,6 +318,14 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 	if ( functionType->returnVarying() )
 		std::cout << "Check on what it means to return varying..." << std::endl;
 
+	if ( myDoForwardDecl > 0 )
+	{
+		// if we aren't used in initializing constants, we can be
+		// declared inline and don't need a forward decl
+		if ( myFuncsUsedInInit.find( f.name ) == myFuncsUsedInInit.end() )
+			return;
+	}
+
 	std::string funcName = removeNSQuals( f.name );
 	bool isMain = funcName == ctxt.module()->name();
 	if ( funcName == "main" )
@@ -319,7 +341,7 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 		variable( ctxt, std::string(), functionType->returnType(),
 				  false, false, false );
 
-		curStream() << funcName << "( ";
+		curStream() << ' ' << funcName << "( ";
 		bool notfirst = false;
 		for ( size_t i = 0, N = params.size(); i != N; ++i )
 		{
@@ -332,38 +354,44 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 			variable( ctxt, parm.name, parm.type,
 					  parm.access == RWA_READ, true,
 					  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
-
-			if ( parm.defaultValue )
-			{
-				curStream() << " = ";
-				NameNodePtr n = parm.defaultValue.cast<NameNode>();
-				std::string defVal;
-				if ( n )
-				{
-					defVal = n->name;
-				}
-				else
-				{
-					std::stringstream nameLookupB;
-					pushStream( nameLookupB );
-					parm.defaultValue->generateCode( ctxt );
-					popStream();
-					defVal = nameLookupB.str();
-				}
-				std::map<std::string, std::string>::const_iterator found = myDefaultMappings.find( defVal );
-				if ( found != myDefaultMappings.end() )
-					curStream() << found->second;
-				else
-					curStream() << defVal;
-			}
 		}
 		curStream() << " );";
 		popStream();
 	}
+	else if ( myDoForwardDecl > 0 )
+	{
+		newlineAndIndent();
+		curStream() << "static ";
+		variable( ctxt, std::string(), functionType->returnType(),
+				  false, false, false );
+
+		curStream() << ' ' << funcName << "( ";
+		bool notfirst = false;
+		for ( size_t i = 0, N = params.size(); i != N; ++i )
+		{
+			const Param &parm = params[i];
+			if ( notfirst )
+				curStream() << ", ";
+			else
+				notfirst = true;
+
+			variable( ctxt, parm.name, parm.type,
+					  parm.access == RWA_READ, true,
+					  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
+		}
+		curStream() << " );";
+		return;
+	}
 
 	newlineAndIndent();
 	if ( ! isMain )
-		curStream() << "static inline ";
+	{
+		curStream() << "static ";
+	
+		if ( myFuncsUsedInInit.find( f.name ) == myFuncsUsedInInit.end() )
+			curStream() << "inline ";
+	}
+
 	variable( ctxt, std::string(), functionType->returnType(),
 			  false, false, false );
 	newlineAndIndent();
@@ -381,30 +409,6 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 		variable( ctxt, parm.name, parm.type,
 				  parm.access == RWA_READ, true,
 				  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
-
-		if ( ! isMain && parm.defaultValue )
-		{
-			curStream() << " = ";
-			NameNodePtr n = parm.defaultValue.cast<NameNode>();
-			std::string defVal;
-			if ( n )
-			{
-				defVal = n->name;
-			}
-			else
-			{
-				std::stringstream nameLookupB;
-				pushStream( nameLookupB );
-				parm.defaultValue->generateCode( ctxt );
-				popStream();
-				defVal = nameLookupB.str();
-			}
-			std::map<std::string, std::string>::const_iterator found = myDefaultMappings.find( defVal );
-			if ( found != myDefaultMappings.end() )
-				curStream() << found->second;
-			else
-				curStream() << defVal;
-		}
 	}
 	curStream() << " )";
 	pushBlock();
@@ -429,23 +433,18 @@ CPPGenerator::variable( CodeLContext &ctxt, const CodeVariableNode &v )
 {
 	if ( myInModuleInit > 0 )
 	{
+		std::map<std::string, std::string>::const_iterator i = myGlobalLiterals.find( v.name );
+
+		// We'll just put the literal in directly
+		if ( i != myGlobalLiterals.end() )
+			return;
+
 		std::stringstream varDeclB;
 		pushStream( varDeclB );
 		bool doConst = ! v.info->isWritable();
 
-		// introspect a bit and if a value is
-		// initialized by a function call, override
-		// the default init and just do it in the init
-		// function since the functions may not yet be
-		// declared since the interpreter coalesces everything into
-		// modules constants at the beginning
-		bool overrideInit = checkNeedInitInModuleInit( v.initialValue );
-		if ( overrideInit )
-			doConst = false;
 		InitType initT = variable( ctxt, v.name, v.info->type(),
 								   doConst, false, false );
-		if ( overrideInit )
-			initT = FUNC;
 
 		popStream();
 		std::string varDecl = varDeclB.str();
@@ -539,15 +538,27 @@ void CPPGenerator::cond( CodeLContext &ctxt, const CodeIfNode &v )
 	BoolTypePtr boolType = ctxt.newBoolType();
 	boolType->generateCastFrom( v.condition, ctxt );
 	curStream() << " )";
-	pushBlock();
+
 	StatementNodePtr tPath = v.truePath;
 	StatementNodePtr fPath = v.falsePath;
-	while ( tPath )
+
+	if ( tPath && ! tPath->next )
 	{
+		pushIndent();
 		tPath->generateCode( ctxt );
-		tPath = tPath->next;
+		popIndent();
 	}
-	popBlock();
+	else
+	{
+		pushBlock();
+		while ( tPath )
+		{
+			tPath->generateCode( ctxt );
+			tPath = tPath->next;
+		}
+		popBlock();
+	}
+
 	if ( fPath )
 	{
 		newlineAndIndent();
@@ -558,8 +569,16 @@ void CPPGenerator::cond( CodeLContext &ctxt, const CodeIfNode &v )
 			fPath->generateCode( ctxt );
 			--myInElse;
 		}
+		else if ( ! fPath->next )
+		{
+			pushIndent();
+			fPath->generateCode( ctxt );
+			popIndent();
+		}
 		else
 		{
+			int oldV = myInElse;
+			myInElse = 0;
 			pushBlock();
 			while ( fPath )
 			{
@@ -567,6 +586,7 @@ void CPPGenerator::cond( CodeLContext &ctxt, const CodeIfNode &v )
 				fPath = fPath->next;
 			}
 			popBlock();
+			myInElse = oldV;
 		}
 	}
 }
@@ -617,6 +637,9 @@ CPPGenerator::loop( CodeLContext &ctxt, const CodeWhileNode &v )
 void
 CPPGenerator::binaryOp( CodeLContext &ctxt, const CodeBinaryOpNode &v )
 {
+	// operator precedence in CTL is same as C++, but we will have
+	// lost any parens during the parse stage, so we should
+	// introduce them all the time just in case
 	curStream() << '(';
 	v.operandType->generateCastFrom( v.leftOperand, ctxt );
 	curStream() << ' ';
@@ -634,9 +657,7 @@ void
 CPPGenerator::unaryOp( CodeLContext &ctxt, const CodeUnaryOpNode &v )
 {
 	v.type->generateCode( const_cast<CodeUnaryOpNode *>( &v ), ctxt );
-	curStream() << '(';
 	v.type->generateCastFrom( v.operand, ctxt );
-	curStream() << ')';
 }
 
 
@@ -681,7 +702,11 @@ CPPGenerator::size( CodeLContext &ctxt, const CodeSizeNode &v )
 void
 CPPGenerator::name( CodeLContext &ctxt, const CodeNameNode &v )
 {
-	curStream() << removeNSQuals( v.name );
+	std::map<std::string, std::string>::const_iterator i = myGlobalLiterals.find( v.name );
+	if ( i != myGlobalLiterals.end() )
+		curStream() << i->second;
+	else
+		curStream() << removeNSQuals( v.name );
 }
 
 
@@ -782,12 +807,46 @@ CPPGenerator::call( CodeLContext &ctxt, const CodeCallNode &v )
 		FunctionTypePtr functionType = info->functionType();
 		const ParamVector &parameters = functionType->parameters();
 		curStream() << "( ";
-		for ( size_t i = 0, N = v.arguments.size(); i != N; ++i )
+		size_t i = 0;
+		for ( size_t N = v.arguments.size(); i != N; ++i )
 		{
+			if ( i >= parameters.size() )
+				throw std::logic_error( "Too many arguments in function call" );
+
 			if ( i > 0 )
 				curStream() << ", ";
 
 			parameters[i].type->generateCastFrom( v.arguments[i], ctxt );
+		}
+		for ( size_t N = parameters.size(); i < N; ++i )
+		{
+			const Param &parm = parameters[i];
+
+			if ( i > 0 )
+				curStream() << ", ";
+
+			if ( ! parm.defaultValue )
+				throw std::logic_error( "Missing argument in function call (no default value)" );
+
+			NameNodePtr n = parm.defaultValue.cast<NameNode>();
+			std::string defVal;
+			if ( n )
+			{
+				defVal = n->name;
+			}
+			else
+			{
+				std::stringstream nameLookupB;
+				pushStream( nameLookupB );
+				parm.defaultValue->generateCode( ctxt );
+				popStream();
+				defVal = nameLookupB.str();
+			}
+			std::map<std::string, std::string>::const_iterator found = myDefaultMappings.find( defVal );
+			if ( found != myDefaultMappings.end() )
+				curStream() << found->second;
+			else
+				curStream() << defVal;
 		}
 		curStream() << " )";
 	}
@@ -916,7 +975,7 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 	{
 		if ( myCurInitType == ASSIGN )
 			curStream() << '{';
-		pushIndent();
+
 		if ( myCurInitType == FUNC )
 		{
 			for( MemberVectorConstIterator it = structType->members().begin();
@@ -937,20 +996,23 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 		}
 		else
 		{
+			pushIndent();
 			for( MemberVectorConstIterator it = structType->members().begin();
 				 it != structType->members().end();
 				 ++it )
 			{
 				if ( it != structType->members().begin() )
-					curStream() << ",";
+					curStream() << ", ";
 
-				newlineAndIndent();
 				valueRecurse( ctxt, elements, it->type, index );
 			}
+			popIndent();
 		}
-		popIndent();
 		if ( myCurInitType == ASSIGN )
-			curStream() << " }";
+		{
+			newlineAndIndent();
+			curStream() << "}";
+		}
 	}
 	else if ( ArrayTypePtr arrayType = t.cast<ArrayType>() )
 	{
@@ -959,6 +1021,8 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 			newlineAndIndent();
 			curStream() << '{';
 		}
+		
+
 		size_t N = arrayType->size();
 		bool lineEveryItem = ( N > 4 );
 
@@ -996,7 +1060,7 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 					curStream() << ',';
 				if ( lineEveryItem )
 					newlineAndIndent();
-				else
+				else if ( i > 0 )
 					curStream() << ' ';
 
 				valueRecurse( ctxt, elements, arrayType->elementType(), index );
@@ -1006,8 +1070,8 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 		
 		if ( myCurInitType == ASSIGN )
 		{
-			newlineAndIndent();
-			curStream() << "}";
+//			newlineAndIndent();
+			curStream() << " }";
 		}
 	}
 	else
@@ -1113,6 +1177,9 @@ CPPGenerator::variable( CodeLContext &ctxt,
 				popStream();
 				x << " >";
 				typeName = x.str();
+
+				if ( retval == ASSIGN && isConst )
+					curStream() << "const ";
 			}
 			else
 			{
@@ -1120,11 +1187,10 @@ CPPGenerator::variable( CodeLContext &ctxt,
 					retval = ASSIGN;
 				else
 					retval = CTOR;
+
 				if ( isConst )
 					curStream() << "const ";
 			}
-			if ( retval == ASSIGN && isConst )
-				curStream() << "const ";
 			curStream() << typeName;
 			isWritable = ( isInput || isWritable ) && postDecl.empty();
 			break;
@@ -1316,30 +1382,154 @@ CPPGenerator::findBuiltinType( std::string &typeName,
 
 
 bool
-CPPGenerator::checkNeedInitInModuleInit( const ExprNodePtr &initV )
+CPPGenerator::checkNeedInitInModuleInit( const ExprNodePtr &initV, bool deep )
 {
 	if ( ! initV )
+		return false;
+
+	if ( isAllLiterals( initV ) )
 		return false;
 
 	CallNodePtr c = initV.cast<CallNode>();
 	if ( c )
 	{
+		bool retval = false;
 		SymbolInfoPtr info = c->function->info;
 		if ( info->module() == myCurModule )
-			return true;
+		{
+			myFuncsUsedInInit.insert( c->function->name );
+			if ( deep )
+				retval = true;
+			else
+				return true;
+		}
 
 		if ( ! c->arguments.empty() )
 		{
+			// make sure we check every value for all possible functions
 			for ( size_t i = 0, N = c->arguments.size(); i != N; ++i )
 			{
 				bool needed = checkNeedInitInModuleInit( c->arguments[i] );
-				if ( needed )
-					return true;
+				if ( needed && ! retval )
+				{
+					if ( ! deep )
+						return true;
+					retval = true;
+				}
 			}
 		}
+		return retval;
+	}
+
+	ValueNodePtr val = initV.cast<ValueNode>();
+	if ( val )
+	{
+		bool retval = false;
+		// make sure we check every value for all possible functions
+		for ( size_t i = 0, N = val->elements.size(); i != N; ++i )
+		{
+			bool a = checkNeedInitInModuleInit( val->elements[i] );
+			if ( a && ! retval )
+			{
+				if ( ! deep )
+					return true;
+				retval = true;
+			}
+		}
+		return true;
+	}
+
+	BinaryOpNodePtr bOp = initV.cast<BinaryOpNode>();
+	if ( bOp )
+	{
+		// make sure both run to pick up
+		// any functions used...
+		bool l = checkNeedInitInModuleInit( bOp->leftOperand );
+		bool r = checkNeedInitInModuleInit( bOp->rightOperand );
+		return l || r;
+	}
+	UnaryOpNodePtr uOp = initV.cast<UnaryOpNode>();
+	if ( uOp )
+	{
+		return checkNeedInitInModuleInit( uOp->operand );
 	}
 
 	return false;
+}
+
+
+////////////////////////////////////////
+
+
+bool
+CPPGenerator::isAllLiterals( const ExprNodePtr &v )
+{
+	if ( ! v )
+		return false;
+
+	if ( v.cast<LiteralNode>() )
+		return true;
+
+	ValueNodePtr val = v.cast<ValueNode>();
+	if ( val )
+	{
+		for ( size_t i = 0, N = val->elements.size(); i != N; ++i )
+		{
+			if ( ! isAllLiterals( val->elements[i] ) )
+				return false;
+		}
+		return true;
+	}
+
+	BinaryOpNodePtr bOp = v.cast<BinaryOpNode>();
+	if ( bOp )
+	{
+		if ( ! isAllLiterals( bOp->leftOperand ) ||
+			 ! isAllLiterals( bOp->rightOperand ) )
+			return false;
+
+		return true;
+	}
+	UnaryOpNodePtr uOp = v.cast<UnaryOpNode>();
+	if ( uOp )
+	{
+		return isAllLiterals( uOp->operand );
+	}
+
+	return false;
+}
+
+
+////////////////////////////////////////
+
+
+void
+CPPGenerator::extractLiteralConstants( const StatementNodePtr &consts,
+									   CodeLContext &ctxt )
+{
+	StatementNodePtr curConst = consts;
+	while ( curConst )
+	{
+		VariableNodePtr var = curConst.cast<VariableNode>();
+		if ( isAllLiterals( var->initialValue ) )
+		{
+			if ( ! var->initialValue.cast<ValueNode>() )
+			{
+				std::stringstream x;
+				pushStream( x );
+				var->initialValue->generateCode( ctxt );
+				popStream();
+				myGlobalLiterals[var->name] = x.str();
+			}
+		}
+		else if ( var->initialValue )
+		{
+			// don't care about the result, but need to get the function names
+			// into the func used table
+			checkNeedInitInModuleInit( var->initialValue, true );
+		}
+		curConst = curConst->next;
+	}
 }
 
 
