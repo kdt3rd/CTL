@@ -109,7 +109,15 @@ CPPGenerator::getCode( void )
 std::string
 CPPGenerator::stdLibraryAndSetup( void )
 {
-	return std::string(
+	std::stringstream libSetupB;
+	std::string precType = getPrecisionType();
+	std::string precSuffix = getPrecisionFunctionSuffix();
+	std::string precVec3 = getVectorType( 3 );
+	std::string precVec4 = getVectorType( 4 );
+	std::string precMat33 = getMatrixType( 3 );
+	std::string precMat44 = getMatrixType( 4 );
+	
+	libSetupB <<
 		"// C++ code automatically generated\n\n"
 		"#include <ImathVec.h>\n"
 		"#include <ImathMatrix.h>\n"
@@ -126,58 +134,90 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"\n"
 		"using namespace Ctl;\n"
 		"\n"
+		"namespace _ctlcc_ {\n"
+		"\n"
 		"static inline void assert( bool v ) { if (!v) throw std::logic_error( \"Assertion failure\" ); }\n"
 		"\n"
 		"static inline void print_bool( bool v ) { std::cout << (v ? \"true\" : \"false\"); }\n"
 		"static inline void print_int( int v ) { std::cout << v; }\n"
 		"static inline void print_unsigned_int( unsigned int v ) { std::cout << v; }\n"
 		"static inline void print_half( half v ) { std::cout << v; }\n"
-		"static inline void print_float( float v ) { std::cout << v; }\n"
+		"static inline void print_float( " << precType << " v ) { std::cout << v; }\n"
 		"static inline void print_string( const std::string &v ) { std::cout << v; }\n"
 		"static inline void print_string( const char *v ) { std::cout << v; }\n"
 		"\n"
-		"static inline bool isfinite_f( float v ) { return isfinite( v ); }\n"
-		"static inline bool isnormal_f( float v ) { return isnormal( v ); }\n"
-		"static inline bool isnan_f( float v ) { return isnan( v ); }\n"
-		"static inline bool isinf_f( float v ) { return isinf( v ) != 0; }\n"
+		"static inline bool isfinite_f( " << precType << " v ) { return isfinite( v ); }\n"
+		"static inline bool isnormal_f( " << precType << " v ) { return isnormal( v ); }\n"
+		"static inline bool isnan_f( " << precType << " v ) { return isnan( v ); }\n"
+		"static inline bool isinf_f( " << precType << " v ) { return isinf( v ) != 0; }\n"
 		"static inline bool isfinite_h( half v ) { return v.isFinite(); }\n"
 		"static inline bool isnormal_h( half v ) { return v.isNormalized(); }\n"
 		"static inline bool isnan_h( half v ) { return v.isNan(); }\n"
 		"static inline bool isinf_h( half v ) { return v.isInfinity() != 0; }\n"
 		"\n"
-		"#define FLT_POS_INF std::numeric_limits<float>::infinity()\n"
-		"#define FLT_NEG_INF (-std::numeric_limits<float>::infinity())\n"
-		"#define FLT_NAN (-std::numeric_limits<float>::quiet_NaN())\n"
+		"#define FLT_POS_INF std::numeric_limits<" << precType << ">::infinity()\n"
+		"#define FLT_NEG_INF (-std::numeric_limits<" << precType << ">::infinity())\n"
+		"#define FLT_NAN (-std::numeric_limits<" << precType << ">::quiet_NaN())\n"
 		"#define HALF_POS_INF half::posInf()\n"
 		"#define HALF_NEG_INF half::negInf()\n"
 		"#define HALF_NAN half::qNan()\n"
 		"\n"
-		"static inline half exp_h( float v ) { return half( exp( v ) ); }\n"
-		"static inline float log_h( half v ) { return log( float( v ) ); }\n"
-		"static inline float log10_h( half v ) { return log10( float( v ) ); }\n"
-		"static inline half pow_h( half x, float y ) { return half( pow( float(x), y ) ); }\n"
-		"static inline float pow10( float v ) { return pow( 10.0, v ); }\n"
-		"static inline half pow10_h( float v ) { return half( pow( 10.0, v ) ); }\n"
+		"static inline " << precType << " acos( " << precType << " v ) { return acos" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " asin( " << precType << " v ) { return asin" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " atan( " << precType << " v ) { return atan" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " atan2( " << precType << " y, " << precType << " x ) { return atan2" << precSuffix << "( y, x ); }\n"
+		"static inline " << precType << " cos( " << precType << " v ) { return cos" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " sin( " << precType << " v ) { return sin" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " tan( " << precType << " v ) { return tan" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " cosh( " << precType << " v ) { return cosh" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " sinh( " << precType << " v ) { return sinh" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " tanh( " << precType << " v ) { return tanh" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " exp( " << precType << " v ) { return exp" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " log( " << precType << " v ) { return log" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " log10( " << precType << " v ) { return log10" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " pow( " << precType << " x, " << precType << " y ) { return pow" << precSuffix << "( x, y ); }\n"
+		"static inline " << precType << " pow10( " << precType << " y ) { return pow" << precSuffix << "( 10.0, y ); }\n"
+		"static inline " << precType << " sqrt( " << precType << " v ) { return sqrt" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " fabs( " << precType << " v ) { return fabs" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " floor( " << precType << " v ) { return floor" << precSuffix << "( v ); }\n"
+		"static inline " << precType << " fmod( " << precType << " x, " << precType << " y ) { return fmod" << precSuffix << "( x, y ); }\n"
+		"static inline " << precType << " hypot( " << precType << " x, " << precType << " y ) { return hypot" << precSuffix << "( x, y ); }\n"
 		"\n"
-		"static inline Imath::M33f mult_f33_f33( const Imath::M33f &a, const Imath::M33f &b ) { return a * b; }\n"
-		"static inline Imath::M44f mult_f44_f44( const Imath::M44f &a, const Imath::M44f &b ) { return a * b; }\n"
-		"static inline Imath::M33f mult_f_f33( float a, const Imath::M33f &b ) { return a * b; }\n"
-		"static inline Imath::M44f mult_f_f44( float a, const Imath::M44f &b ) { return a * b; }\n"
-		"static inline Imath::M33f add_f33_f33( const Imath::M33f &a, const Imath::M33f &b ) { return a + b; }\n"
-		"static inline Imath::M44f add_f44_f44( const Imath::M44f &a, const Imath::M44f &b ) { return a + b; }\n"
-		"static inline Imath::M33f invert_f33( const Imath::M33f &a ) { return a.inverse(); }\n"
-		"static inline Imath::M44f invert_f44( const Imath::M44f &a ) { return a.inverse(); }\n"
-		"static inline Imath::M33f transpose_f33( const Imath::M33f &a ) { return a.transposed(); }\n"
-		"static inline Imath::M44f transpose_f44( const Imath::M44f &a ) { return a.transposed(); }\n"
-		"static inline Imath::V3f mult_f3_f33( const Imath::V3f &a, const Imath::M33f &b ) { return a * b; }\n"
-		"static inline Imath::V3f mult_f3_f44( const Imath::V3f &a, const Imath::M44f &b ) { return a * b; }\n"
-		"static inline Imath::V3f mult_f_f3( float a, const Imath::V3f &b ) { return a * b; }\n"
-		"static inline Imath::V3f add_f3_f3( const Imath::V3f &a, const Imath::V3f &b ) { return a + b; }\n"
-		"static inline Imath::V3f sub_f3_f3( const Imath::V3f &a, const Imath::V3f &b ) { return a - b; }\n"
-		"static inline Imath::V3f cross_f3_f3( const Imath::V3f &a, const Imath::V3f &b ) { return a.cross( b ); }\n"
-		"static inline float dot_f3_f3( const Imath::V3f &a, const Imath::V3f &b ) { return a.dot( b ); }\n"
-		"static inline float length_f3( const Imath::V3f &a ) { return a.length(); }\n"
-					   );
+		"static inline half exp_h( " << precType << " v ) { return half( exp( v ) ); }\n"
+		"static inline " << precType << " log_h( half v ) { return log( float( v ) ); }\n"
+		"static inline " << precType << " log10_h( half v ) { return log10( float( v ) ); }\n"
+		"static inline half pow_h( half x, " << precType << " y ) { return half( pow( float( x ), y ) ); }\n"
+		"static inline half pow10_h( " << precType << " v ) { return half( pow( 10.0, v ) ); }\n"
+		"\n"
+		"static inline " << precMat33 << " mult_f33_f33( const " << precMat33 << " &a, const " << precMat33 << " &b ) { return a * b; }\n"
+		"static inline " << precMat44 << " mult_f44_f44( const " << precMat44 << " &a, const " << precMat44 << " &b ) { return a * b; }\n"
+		"static inline " << precMat33 << " mult_f_f33( " << precType << " a, const " << precMat33 << " &b ) { return a * b; }\n"
+		"static inline " << precMat44 << " mult_f_f44( " << precType << " a, const " << precMat44 << " &b ) { return a * b; }\n"
+		"static inline " << precMat33 << " add_f33_f33( const " << precMat33 << " &a, const " << precMat33 << " &b ) { return a + b; }\n"
+		"static inline " << precMat44 << " add_f44_f44( const " << precMat44 << " &a, const " << precMat44 << " &b ) { return a + b; }\n"
+		"static inline " << precMat33 << " invert_f33( const " << precMat33 << " &a ) { return a.inverse(); }\n"
+		"static inline " << precMat44 << " invert_f44( const " << precMat44 << " &a ) { return a.inverse(); }\n"
+		"static inline " << precMat33 << " transpose_f33( const " << precMat33 << " &a ) { return a.transposed(); }\n"
+		"static inline " << precMat44 << " transpose_f44( const " << precMat44 << " &a ) { return a.transposed(); }\n"
+		"static inline " << precVec3 << " mult_f3_f33( const " << precVec3 << " &a, const " << precMat33 << " &b ) { return a * b; }\n"
+		"static inline " << precVec3 << " mult_f3_f44( const " << precVec3 << " &a, const " << precMat44 << " &b ) { return a * b; }\n"
+		"static inline " << precVec3 << " mult_f_f3( " << precType << " a, const " << precVec3 << " &b ) { return a * b; }\n"
+		"static inline " << precVec3 << " add_f3_f3( const " << precVec3 << " &a, const " << precVec3 << " &b ) { return a + b; }\n"
+		"static inline " << precVec3 << " sub_f3_f3( const " << precVec3 << " &a, const " << precVec3 << " &b ) { return a - b; }\n"
+		"static inline " << precVec3 << " cross_f3_f3( const " << precVec3 << " &a, const " << precVec3 << " &b ) { return a.cross( b ); }\n"
+		"static inline " << precType << " dot_f3_f3( const " << precVec3 << " &a, const " << precVec3 << " &b ) { return a.dot( b ); }\n"
+		"static inline " << precType << " length_f3( const " << precVec3 << " &a ) { return a.length(); }\n"
+		"\n"
+		"using Ctl::RGBtoXYZ;\n"
+		"using Ctl::XYZtoRGB;\n"
+		"using Ctl::XYZtoLuv;\n"
+		"using Ctl::LuvtoXYZ;\n"
+		"using Ctl::XYZtoLab;\n"
+		"using Ctl::LabtoXYZ;\n"
+		"\n"
+		"} // namespace _ctlcc_\n\n";
+
+	return libSetupB.str();
 }
 
 
@@ -213,6 +253,7 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 {
 	Module *oldModule = myCurModule;
 	myCurModule = ctxt.module();
+	std::string mName = cleanName( myCurModule->name() );
 
 	extractLiteralConstants( m.constants, ctxt );
 	pushStream( myCodeStream );
@@ -222,9 +263,13 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 				<< ctxt.fileName() << ")\n";
 	newlineAndIndent();
 
-	if ( m.constants )
-		curStream() << "////////// CONSTANTS //////////\n\n";
+	curStream() << "namespace " << mName << " {";
+	newlineAndIndent();
+
 	++myInModuleInit;
+	myCurModuleInit.push_back( std::vector<std::string>() );
+
+	// Forward declare any functions used in initializing variables
 	FunctionNodePtr function = m.functions;
 	++myDoForwardDecl;
 	while ( function )
@@ -235,38 +280,35 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 	--myDoForwardDecl;
 	newlineAndIndent();
 
-	myCurModuleInit.push_back( std::vector<std::string>() );
 	StatementNodePtr consts = m.constants;
 	while ( consts )
 	{
 		consts->generateCode( ctxt );
 		consts = consts->next;
 	}
+
 	if ( m.constants )
-		curStream() << "\n\n";
+		newlineAndIndent();
 	--myInModuleInit;
 
-	std::string mName = cleanName( ctxt.module()->name() );
 	if ( ! myCurModuleInit.back().empty() )
 	{
-		curStream() << "////////// INIT_CODE //////////";
+		const std::vector<std::string> &initVals = myCurModuleInit.back();
+
 		newlineAndIndent();
-		curStream() << "static void init_" << mName << "( void );";
-		newlineAndIndent();
-		curStream() << "struct InitVals_" << mName;
+		curStream() << "struct __ctlcc_InitVals_" << mName;
 		pushBlock();
 		newlineAndIndent();
-		curStream() << "InitVals_" << mName << "() { init_" << mName << "(); }";
+		curStream() << "__ctlcc_InitVals_" << mName << "( void )";
+		pushBlock();
+		for ( size_t i = 0, N = initVals.size(); i != N; ++i )
+			curStream() << initVals[i] << '\n';
+		newlineAndIndent();
+		popBlock();
 		popBlock();
 		curStream() << ";";
 		newlineAndIndent();
-		curStream() << "static InitVals_" << mName << " theDoInit_" << mName << ";\n\n";
-	}
-
-	if ( m.functions )
-	{
-		newlineAndIndent();
-		curStream() << "////////// FUNCTIONS //////////\n\n";
+		curStream() << "static __ctlcc_InitVals_" << mName << " __ctlcc_GlobalInitializer_" << mName << ";\n\n";
 	}
 
 	function = m.functions;
@@ -276,28 +318,9 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 		function = function->next;
 	}
 
-	if ( ! myCurModuleInit.back().empty() )
-	{
-		const std::vector<std::string> &initVals = myCurModuleInit.back();
-		newlineAndIndent();
-		curStream() << "void init_" << mName << "( void )";
-		pushBlock();
-		newlineAndIndent();
-		curStream() << "static bool doneInit = false;";
-		newlineAndIndent();
-		curStream() << "if ( doneInit ) return;\n";
-		for ( size_t i = 0, N = initVals.size(); i != N; ++i )
-			curStream() << initVals[i] << '\n';
-		newlineAndIndent();
-		curStream() << "doneInit = true;";
-		popBlock();
-		newlineAndIndent();
-	}
-	else
-	{
-		// make sure we end the module on a new line
-		newlineAndIndent();
-	}
+	newlineAndIndent();
+	curStream() << "} // namespace " << mName;
+	newlineAndIndent();
 
 	myCurModuleInit.pop_back();
 	popStream();
@@ -330,12 +353,17 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 	bool isMain = funcName == ctxt.module()->name();
 	if ( funcName == "main" )
 	{
-		funcName = ctxt.module()->name();
+		funcName = myCurModule->name();
 		isMain = true;
 	}
 
 	if ( isMain )
 	{
+		std::string nsName = myCurModule->name() + "::" + funcName;
+		registerMainRoutine( funcName, nsName, f.info );
+
+		// and put it in a header file in case someone cares
+		// about that
 		pushStream( myHeaderStream );
 		newlineAndIndent();
 		variable( ctxt, std::string(), functionType->returnType(),
@@ -439,16 +467,30 @@ CPPGenerator::variable( CodeLContext &ctxt, const CodeVariableNode &v )
 		if ( i != myGlobalLiterals.end() )
 			return;
 
+		bool doConst = ! v.info->isWritable();
+		bool overrideInit = false;
+		if ( ! myCPP11Mode )
+		{
+			// in C++11 we can use initializer lists or constructors
+			// for everything. In old c++, some things have to be
+			// initialized in a function. if we use one of those, we
+			// can't initialize ourselves that quickly...
+			if ( usesUninitLocalGlobals( v.initialValue ) )
+			{
+				doConst = false;
+				overrideInit = true;
+			}
+		}
+
 		std::stringstream varDeclB;
 		pushStream( varDeclB );
-		bool doConst = ! v.info->isWritable();
-
 		InitType initT = variable( ctxt, v.name, v.info->type(),
 								   doConst, false, false );
-
 		popStream();
 		std::string varDecl = varDeclB.str();
 		bool doEmit = true;
+		if ( overrideInit )
+			initT = FUNC;
 
 		if ( v.name.find( '$' ) != std::string::npos )
 		{
@@ -485,6 +527,8 @@ CPPGenerator::variable( CodeLContext &ctxt, const CodeVariableNode &v )
 
 		if ( doEmit )
 		{
+			myGlobalInitType[v.name] = initT;
+			myGlobalVariables.insert( v.name );
 			newlineAndIndent();
 			curStream() << varDecl;
 			doInit( initT, ctxt, v.initialValue, v.name );
@@ -705,8 +749,34 @@ CPPGenerator::name( CodeLContext &ctxt, const CodeNameNode &v )
 	std::map<std::string, std::string>::const_iterator i = myGlobalLiterals.find( v.name );
 	if ( i != myGlobalLiterals.end() )
 		curStream() << i->second;
+	else if ( v.info->isFunction() )
+	{
+		const Module *m = v.info->module();
+		if ( m == myCurModule )
+			curStream() << removeNSQuals( v.name );
+		else if ( m )
+			curStream() << cleanName( m->name() ) << "::" << removeNSQuals( v.name );
+		else
+			curStream() << "_ctlcc_::" << removeNSQuals( v.name );
+	}
 	else
-		curStream() << removeNSQuals( v.name );
+	{
+		if ( myGlobalVariables.find( v.name ) != myGlobalVariables.end() )
+		{
+			const Module *m = v.info->module();
+			if ( m == myCurModule )
+				curStream() << removeNSQuals( v.name );
+			else if ( m )
+				curStream() << cleanName( m->name() ) << "::" << removeNSQuals( v.name );
+			else
+			{
+				// these are currently all #defines, so no namespace
+				curStream() << removeNSQuals( v.name );
+			}
+		}
+		else
+			curStream() << removeNSQuals( v.name );
+	}
 }
 
 
@@ -830,8 +900,13 @@ CPPGenerator::call( CodeLContext &ctxt, const CodeCallNode &v )
 
 			NameNodePtr n = parm.defaultValue.cast<NameNode>();
 			std::string defVal;
+			std::string namesp;
 			if ( n )
 			{
+				const Module *m = n->info->module();
+				if ( m && m != myCurModule )
+					namesp = cleanName( m->name() ) + "::";
+
 				defVal = n->name;
 			}
 			else
@@ -844,7 +919,7 @@ CPPGenerator::call( CodeLContext &ctxt, const CodeCallNode &v )
 			}
 			std::map<std::string, std::string>::const_iterator found = myDefaultMappings.find( defVal );
 			if ( found != myDefaultMappings.end() )
-				curStream() << found->second;
+				curStream() << namesp << found->second;
 			else
 				curStream() << defVal;
 		}
@@ -912,7 +987,7 @@ CPPGenerator::startToHalf( void )
 void
 CPPGenerator::startToFloat( void )
 {
-	curStream() << "static_cast<float>( ";
+	curStream() << "static_cast<" + getPrecisionType() + ">( ";
 }
 
 
@@ -1070,8 +1145,13 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 		
 		if ( myCurInitType == ASSIGN )
 		{
-//			newlineAndIndent();
-			curStream() << " }";
+			if ( lineEveryItem )
+			{
+				newlineAndIndent();
+				curStream() << "}";
+			}
+			else
+				curStream() << " }";
 		}
 	}
 	else
@@ -1107,33 +1187,28 @@ CPPGenerator::variable( CodeLContext &ctxt,
 			break;
 		case BoolTypeEnum:
 			if ( isConst )
-				curStream() << "const bool";
-			else
-				curStream() << "bool";
+				curStream() << "const ";
+			curStream() << "bool";
 			break;
 		case IntTypeEnum:
 			if ( isConst )
-				curStream() << "const int";
-			else
-				curStream() << "int";
+				curStream() << "const ";
+			curStream() << "int";
 			break;
 		case UIntTypeEnum:
 			if ( isConst )
-				curStream() << "const unsigned int";
-			else
-				curStream() << "unsigned int";
+				curStream() << "const ";
+			curStream() << "unsigned int";
 			break;
 		case HalfTypeEnum:
 			if ( isConst )
-				curStream() << "const half";
-			else
-				curStream() << "half";
+				curStream() << "const ";
+			curStream() << "half";
 			break;
 		case FloatTypeEnum:
 			if ( isConst )
-				curStream() << "const float";
-			else
-				curStream() << "float";
+				curStream() << "const ";
+			curStream() << getPrecisionType();
 			break;
 		case StringTypeEnum:
 			if ( isConst )
@@ -1311,19 +1386,15 @@ CPPGenerator::findBuiltinType( std::string &typeName,
 			switch ( sizes[0] )
 			{
 				case 2:
-					typeName = NAMESPACE(IMATH_NAMESPACE, "V2f");
-					break;
 				case 3:
-					typeName = NAMESPACE(IMATH_NAMESPACE, "V3f");
-					break;
 				case 4:
-					typeName = NAMESPACE(IMATH_NAMESPACE, "V4f");
+					typeName = getVectorType( sizes[0] );
 					break;
 				default:
 				{
 					// just do a C array of the low level type
-					std::cout << "sizes[0]: " << sizes[0] << std::endl;
-					typeName = "float";
+//					std::cout << "sizes[0]: " << sizes[0] << std::endl;
+					typeName = getPrecisionType();
 					std::stringstream pB;
 					pB << '[' << sizes[0] << ']';
 					postDecl = pB.str();
@@ -1337,12 +1408,12 @@ CPPGenerator::findBuiltinType( std::string &typeName,
 		if ( arrayType->elementType()->isSameTypeAs(
 				 ctxt.newArrayType( fltType, 3 ) ) )
 		{
-			typeName = NAMESPACE(IMATH_NAMESPACE, "M33f");
+			typeName = getMatrixType( 3 );
 		}
 		else if ( arrayType->elementType()->isSameTypeAs(
 					  ctxt.newArrayType( fltType, 4 ) ) )
 		{
-			typeName = NAMESPACE(IMATH_NAMESPACE, "M44f");
+			typeName = getMatrixType( 4 );
 		}
 	}
 	else if ( arrayType->elementType()->isSameTypeAs( ctxt.newIntType() ) )
@@ -1470,6 +1541,9 @@ CPPGenerator::isAllLiterals( const ExprNodePtr &v )
 	if ( v.cast<LiteralNode>() )
 		return true;
 
+	if ( v.cast<NameNode>() )
+		return false;
+
 	ValueNodePtr val = v.cast<ValueNode>();
 	if ( val )
 	{
@@ -1503,6 +1577,74 @@ CPPGenerator::isAllLiterals( const ExprNodePtr &v )
 ////////////////////////////////////////
 
 
+bool
+CPPGenerator::usesUninitLocalGlobals( const ExprNodePtr &v )
+{
+	if ( ! v )
+		return false;
+
+	if ( v.cast<LiteralNode>() )
+		return false;
+
+	NameNodePtr namePtr = v.cast<NameNode>();
+	if ( namePtr )
+	{
+		if ( namePtr->info->module() == myCurModule )
+		{
+			std::map<std::string, InitType>::const_iterator i = myGlobalInitType.find( namePtr->name );
+			if ( i != myGlobalInitType.end() )
+			{
+				if ( i->second == FUNC )
+					return true;
+			}
+		}
+
+		return false;
+	}
+
+	CallNodePtr callPtr = v.cast<CallNode>();
+	if ( callPtr )
+	{
+		for ( size_t i = 0, N = callPtr->arguments.size(); i != N; ++i )
+		{
+			if ( usesUninitLocalGlobals( callPtr->arguments[i] ) )
+				return true;
+		}
+
+		return false;
+	}
+
+	ValueNodePtr val = v.cast<ValueNode>();
+	if ( val )
+	{
+		for ( size_t i = 0, N = val->elements.size(); i != N; ++i )
+		{
+			if ( usesUninitLocalGlobals( val->elements[i] ) )
+				return true;
+		}
+		return false;
+	}
+
+	BinaryOpNodePtr bOp = v.cast<BinaryOpNode>();
+	if ( bOp )
+	{
+		if ( usesUninitLocalGlobals( bOp->leftOperand ) ||
+			 usesUninitLocalGlobals( bOp->rightOperand ) )
+			return true;
+
+		return false;
+	}
+	UnaryOpNodePtr uOp = v.cast<UnaryOpNode>();
+	if ( uOp )
+	{
+		return usesUninitLocalGlobals( uOp->operand );
+	}
+}
+
+
+////////////////////////////////////////
+
+
 void
 CPPGenerator::extractLiteralConstants( const StatementNodePtr &consts,
 									   CodeLContext &ctxt )
@@ -1530,88 +1672,6 @@ CPPGenerator::extractLiteralConstants( const StatementNodePtr &consts,
 		}
 		curConst = curConst->next;
 	}
-}
-
-
-////////////////////////////////////////
-
-
-std::string
-CPPGenerator::cleanName( const std::string &x )
-{
-	std::string retval = x;
-	for ( size_t i = 0, N = retval.size(); i != N; ++i )
-	{
-		char &curC = retval[i];
-		if ( i == 0 )
-		{
-			if ( curC != '_' && ! isalpha( curC ) )
-				curC = '_';
-		}
-		else if ( curC != '_' && ! isalnum( curC ) )
-			curC = '_';
-	}
-	return retval;
-}
-
-
-////////////////////////////////////////
-
-
-std::string
-CPPGenerator::escapeLiteral( const std::string &s )
-{
-	std::string retval;
-	retval.reserve( s.size() );
-	for ( size_t i = 0, N = s.size(); i != N; ++i )
-	{
-		switch ( s[i] )
-		{
-			case '\n':
-				retval.push_back( '\\' );
-				retval.push_back( 'n' );
-				break;
-			case '\r':
-				retval.push_back( '\\' );
-				retval.push_back( 'r' );
-				break;
-			case '\t':
-				retval.push_back( '\\' );
-				retval.push_back( 't' );
-				break;
-			case '"':
-				retval.push_back( '\\' );
-				retval.push_back( '"' );
-				break;
-			default:
-				retval.push_back( s[i] );
-				break;
-		}
-
-	}
-	return retval;
-}
-
-
-////////////////////////////////////////
-
-
-std::string
-CPPGenerator::removeNSQuals( const std::string &x )
-{
-	std::string retval = x;
-	std::string::size_type firstP = retval.find( "::" );
-	if ( firstP == 0 )
-		retval.erase( 0, firstP + 2 );
-	else if ( firstP != std::string::npos )
-	{
-		do
-		{
-			retval.replace( firstP, 2, "__" );
-			firstP = retval.find( "::" );
-		} while ( firstP != std::string::npos );
-	}
-	return cleanName( retval );
 }
 
 } // namespace Ctl

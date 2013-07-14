@@ -48,12 +48,16 @@
 #include "CtlCodeLanguageGenerator.h"
 #include <iomanip>
 #include <stdexcept>
+#include <ImathNamespace.h>
+
+#define STRINGIZE(X) #X
+#define NAMESPACE(N) STRINGIZE(N) "::"
 
 namespace Ctl
 {
 
 LanguageGenerator::LanguageGenerator( void )
-		: myCurIndent( 0 ), myIndent( "    " )
+		: myPrecision( FLOAT ), myCurIndent( 0 ), myIndent( "    " )
 {
 }
 
@@ -130,6 +134,184 @@ LanguageGenerator::popStream( void )
 		throw std::logic_error( "Invalid push/pop pairs for stream stack" );
 
 	myStreamStack.pop();
+}
+
+
+////////////////////////////////////////
+
+
+std::string
+LanguageGenerator::cleanName( const std::string &x )
+{
+	std::string retval = x;
+	for ( size_t i = 0, N = retval.size(); i != N; ++i )
+	{
+		char &curC = retval[i];
+		if ( i == 0 )
+		{
+			if ( curC != '_' && ! isalpha( curC ) )
+				curC = '_';
+		}
+		else if ( curC != '_' && ! isalnum( curC ) )
+			curC = '_';
+	}
+	return retval;
+}
+
+
+////////////////////////////////////////
+
+
+std::string
+LanguageGenerator::escapeLiteral( const std::string &s )
+{
+	std::string retval;
+	retval.reserve( s.size() );
+	for ( size_t i = 0, N = s.size(); i != N; ++i )
+	{
+		switch ( s[i] )
+		{
+			case '\n':
+				retval.push_back( '\\' );
+				retval.push_back( 'n' );
+				break;
+			case '\r':
+				retval.push_back( '\\' );
+				retval.push_back( 'r' );
+				break;
+			case '\t':
+				retval.push_back( '\\' );
+				retval.push_back( 't' );
+				break;
+			case '"':
+				retval.push_back( '\\' );
+				retval.push_back( '"' );
+				break;
+			default:
+				retval.push_back( s[i] );
+				break;
+		}
+
+	}
+	return retval;
+}
+
+
+////////////////////////////////////////
+
+
+std::string
+LanguageGenerator::removeNSQuals( const std::string &x )
+{
+	std::string retval = x;
+	std::string::size_type firstP = retval.find( "::" );
+	if ( firstP == 0 )
+		retval.erase( 0, firstP + 2 );
+	else if ( firstP != std::string::npos )
+	{
+		do
+		{
+			retval.replace( firstP, 2, "__" );
+			firstP = retval.find( "::" );
+		} while ( firstP != std::string::npos );
+	}
+	return cleanName( retval );
+}
+
+
+////////////////////////////////////////
+
+
+std::string
+LanguageGenerator::getPrecisionFunctionSuffix( void ) const
+{
+	switch ( myPrecision )
+	{
+		case FLOAT: return std::string( "f" );
+		case LONG_DOUBLE: return std::string( "l" );
+	}
+
+	return std::string();
+}
+
+
+////////////////////////////////////////
+
+
+std::string
+LanguageGenerator::getPrecisionType( void ) const
+{
+	switch ( myPrecision )
+	{
+		case FLOAT: return std::string( "float" );
+		case DOUBLE: return std::string( "double" );
+		case LONG_DOUBLE: return std::string( "long double" );
+	}
+
+	return std::string( "unknown" );
+}
+
+
+////////////////////////////////////////
+
+
+std::string
+LanguageGenerator::getVectorType( int n ) const
+{
+	std::stringstream buf;
+	switch ( myPrecision )
+	{
+		case FLOAT:
+			buf << NAMESPACE(IMATH_NAMESPACE) << "V" << n << 'f';
+			break;
+		case DOUBLE:
+			buf << NAMESPACE(IMATH_NAMESPACE) << "V" << n << 'd';
+			break;
+		case LONG_DOUBLE:
+			buf << NAMESPACE(IMATH_NAMESPACE) << "Vec" << n << "<long double>";
+			break;
+	}
+	
+	return buf.str();
+}
+
+
+////////////////////////////////////////
+
+
+std::string
+LanguageGenerator::getMatrixType( int n ) const
+{
+	std::stringstream buf;
+	switch ( myPrecision )
+	{
+		case FLOAT:
+			buf << NAMESPACE(IMATH_NAMESPACE) << "M" << n << n << 'f';
+			break;
+		case DOUBLE:
+			buf << NAMESPACE(IMATH_NAMESPACE) << "M" << n << n << 'd';
+			break;
+		case LONG_DOUBLE:
+			buf << NAMESPACE(IMATH_NAMESPACE) << "Matrix" << n << n << "<long double>";
+			break;
+	}
+	
+	return buf.str();
+}
+
+
+////////////////////////////////////////
+
+
+void
+LanguageGenerator::registerMainRoutine( const std::string &name,
+										const std::string &nsName,
+										const SymbolInfoPtr &fnInfo )
+{
+	if ( myMainRoutines.find( name ) != myMainRoutines.end() )
+		throw std::logic_error( "Attempt to register main routine '" + name + "' twice" );
+
+	myMainRoutines[name] = std::make_pair( nsName, fnInfo );
 }
 
 } // namespace Ctl

@@ -50,7 +50,9 @@
 
 #include <sstream>
 #include <stack>
+#include <map>
 
+#include <CtlSymbolTable.h>
 #include "CtlCodeSyntaxTree.h"
 
 namespace Ctl
@@ -61,8 +63,24 @@ class CodeLContext;
 class LanguageGenerator
 {
 public:
+	typedef std::map<std::string, std::pair<std::string, SymbolInfoPtr> > MainRoutineMap;
+
+	enum Precision
+	{
+		FLOAT,
+		DOUBLE,
+		LONG_DOUBLE
+	};
+
 	LanguageGenerator( void );
 	virtual ~LanguageGenerator( void );
+
+	// Needs to be called before the init stuff is called
+	// or any modules are parsed
+	void setPrecision( Precision p ) { myPrecision = p; }
+	Precision getPrecision( void ) const { return myPrecision; }
+
+	const MainRoutineMap &getMainRoutines( void ) const { return myMainRoutines; }
 
 	// Should just be the setup code (i.e. forward decls
 	// for functions in C)
@@ -110,6 +128,7 @@ public:
 	virtual void endCoersion( void ) = 0;
 
 	virtual void emitToken( Token t ) = 0;
+
 protected:
 	void setIndentText( const std::string &i );
 
@@ -123,10 +142,25 @@ protected:
 	void pushStream( std::ostream &os );
 	void popStream( void );
 
+	// might be useful in sub classing
+	std::string cleanName( const std::string &x );
+	std::string escapeLiteral( const std::string &s );
+	std::string removeNSQuals( const std::string &x );
+
+	std::string getPrecisionFunctionSuffix( void ) const;
+	std::string getPrecisionType( void ) const;
+	std::string getVectorType( int n ) const;
+	std::string getMatrixType( int n_by_n ) const;
+
+	void registerMainRoutine( const std::string &name, const std::string &nsName,
+							  const SymbolInfoPtr &fnInfo );
+
 private:
+	Precision myPrecision;
 	std::string myIndent;
 	int myCurIndent;
 	std::stack<std::ostream *> myStreamStack;
+	MainRoutineMap myMainRoutines;
 };
 
 } // namespace Ctl

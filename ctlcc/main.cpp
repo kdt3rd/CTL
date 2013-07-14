@@ -69,6 +69,7 @@ void usageAndExit( const char *argv0, int rv = -1 )
 			  << "    -o <file>|--output=<file>        Send output to file\n"
 			  << "    --header=<file>                  Send header definition to file\n"
 			  << "    --threads                        Generate internal thread dispatch across all processors (default: off)\n"
+			  << "    -p [f|d|l]|--precision=[f|d|l]   Generates specified floating point precision (some routines may be decimated)\n"
 			  << std::endl;
 
 	exit( rv );
@@ -190,6 +191,62 @@ main( int argc, const char *argv[] )
 					usageAndExit( argv[0] );
 				}
 				continue;
+			}
+
+			if ( strcmp( argv[i], "-p" ) == 0 )
+			{
+				++i;
+				if ( i < argc )
+				{
+					if ( strcmp( argv[i], "f" ) == 0 )
+						interpreter.setPrecision( Ctl::LanguageGenerator::FLOAT );
+					else if ( strcmp( argv[i], "d" ) == 0 )
+						interpreter.setPrecision( Ctl::LanguageGenerator::DOUBLE );
+					else if ( strcmp( argv[i], "l" ) == 0 )
+						interpreter.setPrecision( Ctl::LanguageGenerator::LONG_DOUBLE );
+					else
+					{
+						std::cerr << "Unknown precision type specified" << std::endl;
+						usageAndExit( argv[0] );
+					}
+				}
+				else
+				{
+					std::cerr << "Missing argument for -p [f|d|l]" << std::endl;
+					usageAndExit( argv[0] );
+				}
+				continue;
+			}
+
+			if ( strncmp( argv[i], "--precision=", 12 ) == 0 )
+			{
+				std::string precisionStr( argv[i] + 12 );
+				if ( ! precisionStr.empty() )
+				{
+					if ( precisionStr == "f" )
+						interpreter.setPrecision( Ctl::LanguageGenerator::FLOAT );
+					else if ( precisionStr == "d" )
+						interpreter.setPrecision( Ctl::LanguageGenerator::DOUBLE );
+					else if ( precisionStr == "l" )
+						interpreter.setPrecision( Ctl::LanguageGenerator::LONG_DOUBLE );
+					else
+					{
+						std::cerr << "Unknown precision type specified" << std::endl;
+						usageAndExit( argv[0] );
+					}
+				}
+				else
+				{
+					std::cerr << "Missing argument for --precision=[f|d|l]" << std::endl;
+					usageAndExit( argv[0] );
+				}
+				continue;
+			}
+
+			if ( argv[i][0] == '-' )
+			{
+				std::cerr << "Unknown argument '" << argv[i] << "'" << std::endl;
+				usageAndExit( argv[0] );
 			}
 
 			std::string filename = argv[i];

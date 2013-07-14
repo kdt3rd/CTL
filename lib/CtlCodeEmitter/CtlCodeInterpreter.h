@@ -59,11 +59,10 @@
 
 #include <CtlInterpreter.h>
 #include <sstream>
+#include "CtlCodeLanguageGenerator.h"
 
 namespace Ctl
 {
-
-class LanguageGenerator;
 
 class CodeInterpreter: public Interpreter
 {
@@ -86,6 +85,8 @@ public:
 
 	Language getLanguage( void ) const { return myLanguage; }
 	void setLanguage( Language l );
+
+	void setPrecision( LanguageGenerator::Precision p );
 
 	// NB: Must be called after the language has been
 	// set but before any modules are loaded such that

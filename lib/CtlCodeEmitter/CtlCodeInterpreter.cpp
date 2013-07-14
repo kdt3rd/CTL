@@ -107,6 +107,7 @@ CodeInterpreter::setLanguage( Language l )
 		return;
 
 	myLanguage = l;
+	LanguageGenerator::Precision curPrec = myLanguageGenerator->getPrecision();
 	delete myLanguageGenerator;
 	myLanguageGenerator = NULL;
 	switch ( l )
@@ -126,6 +127,17 @@ CodeInterpreter::setLanguage( Language l )
 //			myLanguageGenerator = new CUDAGenerator;
 //			break;
 	}
+	myLanguageGenerator->setPrecision( curPrec );
+}
+
+
+////////////////////////////////////////
+
+
+void
+CodeInterpreter::setPrecision( LanguageGenerator::Precision p )
+{
+	myLanguageGenerator->setPrecision( p );
 }
 
 void
