@@ -52,11 +52,17 @@
 #include "CtlCodeModule.h"
 #include <iomanip>
 #include <limits>
-#include <ImathNamespace.h>
 #include <half.h>
 #include <deque>
 #include <ctype.h>
 #include <stdexcept>
+#include <ImfVersion.h>
+
+#ifdef OPENEXR_IMF_NAMESPACE
+# include <ImathNamespace.h>
+#else
+# define IMATH_NAMESPACE Imath
+#endif
 
 #define STRINGIZE(X) #X
 #define NAMESPACE(N, T) STRINGIZE(N) "::" T
@@ -1639,6 +1645,8 @@ CPPGenerator::usesUninitLocalGlobals( const ExprNodePtr &v )
 	{
 		return usesUninitLocalGlobals( uOp->operand );
 	}
+
+	return false;
 }
 
 

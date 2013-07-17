@@ -48,7 +48,13 @@
 #include "CtlCodeLanguageGenerator.h"
 #include <iomanip>
 #include <stdexcept>
-#include <ImathNamespace.h>
+#include <ImfVersion.h>
+
+#ifdef OPENEXR_IMF_NAMESPACE
+# include <ImathNamespace.h>
+#else
+# define IMATH_NAMESPACE Imath
+#endif
 
 #define STRINGIZE(X) #X
 #define NAMESPACE(N) STRINGIZE(N) "::"
@@ -229,6 +235,7 @@ LanguageGenerator::getPrecisionFunctionSuffix( void ) const
 	{
 		case FLOAT: return std::string( "f" );
 		case LONG_DOUBLE: return std::string( "l" );
+		case DOUBLE: break;
 	}
 
 	return std::string();
