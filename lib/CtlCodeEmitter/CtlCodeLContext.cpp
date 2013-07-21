@@ -381,6 +381,7 @@ StructTypePtr
 CodeLContext::newStructType( const std::string &name,
 							 const MemberVector &members ) const
 {
+	myStructDefines.push_back( std::make_pair( name, members ) );
 	return new CodeStructType(name, members);
 }
 

@@ -275,6 +275,28 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 	++myInModuleInit;
 	myCurModuleInit.push_back( std::vector<std::string>() );
 
+	const std::vector< std::pair< std::string, MemberVector > > &theStructs =
+		ctxt.structs();
+	if ( ! theStructs.empty() )
+	{
+		for ( size_t i = 0, N = theStructs.size(); i != N; ++i )
+		{
+			const std::pair< std::string, MemberVector > &s = theStructs[i];
+			std::string n = removeNSQuals( s.first );
+			newlineAndIndent();
+			curStream() << "struct " << n;
+			pushBlock();
+			for ( size_t m = 0, M = s.second.size(); m != M; ++m )
+			{
+				newlineAndIndent();
+				const Member &mem = s.second[m];
+				variable( ctxt, mem.name, mem.type, false, false, false );
+				curStream() << ';';
+			}
+			popBlock();
+			curStream() << ";\n";
+		}
+	}
 	// Forward declare any functions used in initializing variables
 	FunctionNodePtr function = m.functions;
 	++myDoForwardDecl;

@@ -81,7 +81,9 @@ public:
 
 	LanguageGenerator &generator( void ) { return myLanguageGen; }
 
-    virtual void	newStackFrame ();
+	const std::vector< std::pair< std::string, MemberVector > > &structs( void ) const { return myStructDefines; }
+
+	virtual void	newStackFrame ();
     virtual AddrPtr	parameterAddr (const DataTypePtr &parameterType);
     virtual AddrPtr	returnValueAddr (const DataTypePtr &returnType);
     virtual AddrPtr	autoVariableAddr (const DataTypePtr &variableType);
@@ -199,6 +201,7 @@ private:
     int			_nextParameterAddr;
 
     std::vector<DataTypePtr> _locals;
+	mutable std::vector< std::pair<std::string, MemberVector> > myStructDefines;
 
 	LanguageGenerator &myLanguageGen;
 };
