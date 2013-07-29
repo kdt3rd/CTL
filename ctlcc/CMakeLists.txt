@@ -1,5 +1,19 @@
 
-include_directories( "${CMAKE_CURRENT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/lib/IlmCtl" "${PROJECT_SOURCE_DIR}/lib/IlmCtlMath" "${PROJECT_SOURCE_DIR}/lib/CtlCodeEmitter" )
+if (TIFF_FOUND)
+add_definitions( -DHAVE_LIBTIFF=1 )
+endif()
+
+if ( OpenEXR_FOUND )
+add_definitions( -DHAVE_OPENEXR=1 )
+endif()
+
+if ( AcesContainer_FOUND )
+add_definitions( -DHAVE_ACESFILE=1 )
+endif()
+
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+
+include_directories( "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/lib/IlmCtl" "${PROJECT_SOURCE_DIR}/lib/IlmCtlMath" "${PROJECT_SOURCE_DIR}/lib/CtlCodeEmitter" )
 
 add_executable( ctlcc
   main.cpp
