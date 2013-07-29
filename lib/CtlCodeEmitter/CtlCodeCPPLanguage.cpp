@@ -127,6 +127,7 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"// C++ code automatically generated\n\n"
 		"#include <ImathVec.h>\n"
 		"#include <ImathMatrix.h>\n"
+		"#include <ImathFun.h>\n"
 		"#include <half.h>\n"
 		"#include <float.h>\n"
 		"#include <math.h>\n"
@@ -135,7 +136,6 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"#include <stdexcept>\n"
 		"#include <limits>\n"
 		"#include <vector>\n"
-		"#include <CtlColorSpace.h>\n"
 		"#include <CtlLookupTable.h>\n"
 		"\n"
 		"using namespace Ctl;\n"
@@ -214,12 +214,76 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"static inline " << precType << " dot_f3_f3( const " << precVec3 << " &a, const " << precVec3 << " &b ) { return a.dot( b ); }\n"
 		"static inline " << precType << " length_f3( const " << precVec3 << " &a ) { return a.length(); }\n"
 		"\n"
-		"using Ctl::RGBtoXYZ;\n"
-		"using Ctl::XYZtoRGB;\n"
-		"using Ctl::XYZtoLuv;\n"
-		"using Ctl::LuvtoXYZ;\n"
-		"using Ctl::XYZtoLab;\n"
-		"using Ctl::LabtoXYZ;\n"
+		"namespace {\n"
+		"static inline " << precType << " __cspace_f( " << precType << " x ) { if ( x > " << precType << "(0.008856) ) return pow( x, " << precType << "(1.0 / 3.0) ); return " << precType << "(7.787) * x + " << precType << "(16.0 / 116.0); }\n"
+		"static inline " << precType << " __cspace_fInverse( " << precType << " t ) { if ( t > " << precType << "(0.206892) ) return t * t * t; return " << precType << "(1.0/7.787) * ( t - " << precType << "(16.0/116.0) ); }\n"
+		"static inline " << precType << " __cspace_uprime( const " << precVec3 << " &XYZ ) { return ( XYZ.x * " << precType << "(4) ) / ( XYZ.x + " << precType << "(15) * XYZ.y + " << precType << "(3) * XYZ.z ); }\n"
+		"static inline " << precType << " __cspace_vprime( const " << precVec3 << " &XYZ ) { return ( XYZ.y * " << precType << "(9) ) / ( XYZ.x + " << precType << "(15) * XYZ.y + " << precType << "(3) * XYZ.z ); }\n"
+		"} // empty namespace\n\n"
+		"static inline " << precMat44 << " RGBtoXYZ( const Chromaticities &chroma, " << precType << " Y )\n"
+		"{\n"
+		"    static const " << precType << " one = " << precType << "(1);\n"
+		"    " << precType << " X = chroma.white.x * Y / chroma.white.y;\n"
+		"    " << precType << " Z = (one - chroma.white.x - chroma.white.y) * Y / chroma.white.y;\n"
+		"    " << precType << " d = chroma.red.x * (chroma.blue.y - chroma.green.y) + chroma.blue.x * (chroma.green.y - chroma.red.y) + chroma.green.x * (chroma.red.y - chroma.blue.y);\n"
+		"    " << precType << " Sr = (X * (chroma.blue.y - chroma.green.y) - chroma.green.x * (Y * (chroma.blue.y - one) + chroma.blue.y * (X + Z)) + chroma.blue.x * (Y * (chroma.green.y - one) + chroma.green.y * (X + Z))) / d;\n"
+		"    " << precType << " Sg = (X * (chroma.red.y - chroma.blue.y) + chroma.red.x * (Y * (chroma.blue.y - one) + chroma.blue.y * (X + Z)) - chroma.blue.x * (Y * (chroma.red.y - one) + chroma.red.y * (X + Z))) / d;\n"
+		"    " << precType << " Sb = (X * (chroma.green.y - chroma.red.y) - chroma.red.x * (Y * (chroma.green.y - one) + chroma.green.y * (X + Z)) + chroma.green.x * (Y * (chroma.red.y - one) + chroma.red.y * (X + Z))) / d;\n"
+		"    " << precMat44 << " M;\n"
+		"    M[0][0] = Sr * chroma.red.x;\n"
+		"    M[0][1] = Sr * chroma.red.y;\n"
+		"    M[0][2] = Sr * (1 - chroma.red.x - chroma.red.y);\n"
+		"    M[1][0] = Sg * chroma.green.x;\n"
+		"    M[1][1] = Sg * chroma.green.y;\n"
+		"    M[1][2] = Sg * (1 - chroma.green.x - chroma.green.y);\n"
+		"    M[2][0] = Sb * chroma.blue.x;\n"
+		"    M[2][1] = Sb * chroma.blue.y;\n"
+		"    M[2][2] = Sb * (1 - chroma.blue.x - chroma.blue.y);\n"
+		"    return M;\n"
+		"}\n"
+		"static inline " << precMat44 << " XYZtoRGB( const Chromaticities &chroma, " << precType << " Y ) { return RGBtoXYZ( chroma, Y ).inverse(); }\n"
+		"static inline " << precVec3 << " XYZtoLuv( const " << precVec3 << " &XYZ, const " << precVec3 << " &XYZn )\n"
+		"{\n"
+		"    " << precType << " Lstar = " << precType << "(116) * __cspace_f( XYZ.y / XYZn.y ) - " << precType << "(16);\n"
+		"    " << precType << " ustar = " << precType << "(13) * Lstar * ( __cspace_uprime( XYZ ) - __cspace_uprime( XYZn ) );\n"
+		"    " << precType << " ustar = " << precType << "(13) * Lstar * ( __cspace_vprime( XYZ ) - __cspace_vprime( XYZn ) );\n"
+		"    return " << precVec3 << "( Lstar, ustar, vstar );\n"
+		"}\n"
+		"static inline " << precVec3 << " LuvtoXYZ( const " << precVec3 << " &Luv, const " << precVec3 << " &XYZn )\n"
+		"{\n"
+		"    " << precType << " Lstar = Luv.x;\n"
+		"    " << precType << " ustar = Luv.y;\n"
+		"    " << precType << " vstar = Luv.z;\n"
+		"    " << precType << " unprime = __cspace_uprime( XYZn );\n"
+		"    " << precType << " vnprime = __cspace_vprime( XYZn );\n"
+		"    " << precType << " fY = (Lstar + " << precType << "(16)) / " << precType << "(116);\n"
+		"    " << precType << " Y = XYZn.y * __cspace_fInverse( fY );\n"
+		"    " << precType << " d = " << precType << "(4) * (" << precType << "(13) * Lstar * vnprime + vstar);\n"
+		"    " << precType << " X = " << precType << "(9) * (" << precType << "(13) * Lstar * unprime + ustar) * Y / d;\n"
+		"    " << precType << " Z = " << precType << "-( " << precType << "(3) * ustarr + " << precType << "(13) * Lstar * ( " << precType << "(-12) + " << precType << "(3) * unprime + " << precType << "(20) * vnprime ) + " << precType << "(20) * vstar ) * Y / d;\n"
+		"    return " << precVec3 << "( X, Y, Z );\n"
+		"}\n"
+		"static inline " << precVec3 << " XYZtoLab( const " << precVec3 << " &XYZ, const " << precVec3 << " &XYZn )\n"
+		"{\n"
+		"    " << precType << " tmpY = __cspace_f( XYZ.y / XYZn.y );\n"
+		"    " << precType << " Lstar = " << precType << "(116) * tmpY - " << precType << "(16);\n"
+		"    " << precType << " astar = " << precType << "(500) * ( __cspace_f( XYZ.x / XYZn.x ) -  tmpY );\n"
+		"    " << precType << " astar = " << precType << "(200) * ( tmpY - __cspace_f( XYZ.z / XYZn.z ) );\n"
+		"    return " << precVec3 << "( Lstar, astar, bstar );\n"
+		"}\n"
+		"static inline " << precVec3 << " LabtoXYZ( const " << precVec3 << " &Lab, const " << precVec3 << " &XYZn )\n"
+		"{\n"
+		"    " << precType << " Lstar = Lab.x;\n"
+		"    " << precType << " astar = Lab.y;\n"
+		"    " << precType << " bstar = Lab.z;\n"
+		"    " << precType << " fY = (Lstar + " << precType << "(16)) / " << precType << "(116);\n"
+		"    " << precType << " fX = astar / " << precType << "(500) + fY;\n"
+		"    " << precType << " fZ = fY - bstar / " << precType << "(200);\n"
+		"    " << precType << " X = XYZn.x * __cspace_fInverse( fX );\n"
+		"    " << precType << " Y = XYZn.y * __cspace_fInverse( fY );\n"
+		"    " << precType << " Z = XYZn.z * __cspace_fInverse( fZ );\n"
+		"    return " << precVec3 << "( X, Y, Z );\n"
+		"}\n"
 		"\n"
 		"} // namespace _ctlcc_\n\n";
 
@@ -260,7 +324,9 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 	Module *oldModule = myCurModule;
 	myCurModule = ctxt.module();
 	std::string mName = cleanName( myCurModule->name() );
+	std::cout << "Generating code for module '" << mName << "'" << std::endl;
 
+	std::cout << "Extracting Literal Constants..." << std::endl;
 	extractLiteralConstants( m.constants, ctxt );
 	pushStream( myCodeStream );
 
@@ -275,6 +341,7 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 	++myInModuleInit;
 	myCurModuleInit.push_back( std::vector<std::string>() );
 
+	std::cout << "Generating structs..." << std::endl;
 	const std::vector< std::pair< std::string, MemberVector > > &theStructs =
 		ctxt.structs();
 	if ( ! theStructs.empty() )
@@ -297,6 +364,7 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 			curStream() << ";\n";
 		}
 	}
+	std::cout << "Forward declare used funcs..." << std::endl;
 	// Forward declare any functions used in initializing variables
 	FunctionNodePtr function = m.functions;
 	++myDoForwardDecl;
@@ -308,6 +376,7 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 	--myDoForwardDecl;
 	newlineAndIndent();
 
+	std::cout << "Generating consts..." << std::endl;
 	StatementNodePtr consts = m.constants;
 	while ( consts )
 	{
@@ -319,6 +388,7 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 		newlineAndIndent();
 	--myInModuleInit;
 
+	std::cout << "Generating module init..." << std::endl;
 	if ( ! myCurModuleInit.back().empty() )
 	{
 		const std::vector<std::string> &initVals = myCurModuleInit.back();
@@ -339,6 +409,7 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 		curStream() << "static __ctlcc_InitVals_" << mName << " __ctlcc_GlobalInitializer_" << mName << ";\n\n";
 	}
 
+	std::cout << "Generating functions..." << std::endl;
 	function = m.functions;
 	while ( function )
 	{
@@ -593,7 +664,9 @@ CPPGenerator::assignment( CodeLContext &ctxt, const CodeAssignmentNode &v )
 void
 CPPGenerator::expr( CodeLContext &ctxt, const CodeExprStatementNode &v )
 {
+	newlineAndIndent();
 	v.expr->generateCode( ctxt );
+	curStream() << ';';
 }
 
 
@@ -965,7 +1038,7 @@ void
 CPPGenerator::value( CodeLContext &ctxt, const CodeValueNode &v )
 {
 	size_t idx = 0;
-	valueRecurse( ctxt, v.elements, v.type, idx );
+	valueRecurse( ctxt, v.elements, v.type, idx, "$$$$" );
 }
 
 
@@ -1072,52 +1145,11 @@ CPPGenerator::emitToken( Token t )
 
 void
 CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
-							const DataTypePtr &t, size_t &index )
+							const DataTypePtr &t, size_t &index,
+							const std::string &varName )
 {
-	if ( StructTypePtr structType = t.cast<StructType>() )
-	{
-		if ( myCurInitType == ASSIGN )
-			curStream() << '{';
-
-		if ( myCurInitType == FUNC )
-		{
-			for( MemberVectorConstIterator it = structType->members().begin();
-				 it != structType->members().end();
-				 ++it )
-			{
-				newlineAndIndent();
-
-				std::stringstream tmpB;
-				pushStream( tmpB );
-				valueRecurse( ctxt, elements, it->type, index );
-				popStream();
-				std::string name = "$$$$." + it->name;
-				std::string initV = tmpB.str();
-				replaceInit( initV, name );
-				curStream() << initV;
-			}
-		}
-		else
-		{
-			pushIndent();
-			for( MemberVectorConstIterator it = structType->members().begin();
-				 it != structType->members().end();
-				 ++it )
-			{
-				if ( it != structType->members().begin() )
-					curStream() << ", ";
-
-				valueRecurse( ctxt, elements, it->type, index );
-			}
-			popIndent();
-		}
-		if ( myCurInitType == ASSIGN )
-		{
-			newlineAndIndent();
-			curStream() << "}";
-		}
-	}
-	else if ( ArrayTypePtr arrayType = t.cast<ArrayType>() )
+	ArrayType *arrayType = dynamic_cast<ArrayType *>( t.pointer() );
+	if ( arrayType )
 	{
 		if ( myCurInitType == ASSIGN )
 		{
@@ -1134,25 +1166,19 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 		{
 			std::string builtinType;
 			std::string postDecl;
-			if ( ! findBuiltinType( builtinType, postDecl, arrayType, ctxt ) )
+			if ( ! canBeBuiltinType( arrayType ) )
 			{
 				newlineAndIndent();
-				curStream() << "$$$$.resize( " << arrayType->size() << " );";
+				curStream() << varName << ".resize( " << arrayType->size() << " );";
 			}
 
 			for (int i = 0; i < arrayType->size(); ++i)
 			{
-				newlineAndIndent();
-				std::stringstream tmpB;
-				pushStream( tmpB );
-				valueRecurse( ctxt, elements, arrayType->elementType(), index );
-				popStream();
 				std::stringstream nameB;
-				nameB << "$$$$[" << i << "]";
-				std::string name = nameB.str();
-				std::string initV = tmpB.str();
-				replaceInit( initV, name );
-				curStream() << initV;
+				nameB << varName << "[" << i << "]";
+
+				newlineAndIndent();
+				valueRecurse( ctxt, elements, arrayType->elementType(), index, nameB.str() );
 			}
 		}
 		else
@@ -1166,7 +1192,7 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 				else if ( i > 0 )
 					curStream() << ' ';
 
-				valueRecurse( ctxt, elements, arrayType->elementType(), index );
+				valueRecurse( ctxt, elements, arrayType->elementType(), index, varName );
 			}
 		}
 		popIndent();
@@ -1181,19 +1207,60 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 			else
 				curStream() << " }";
 		}
+
+		return;
 	}
-	else
+
+	StructType *structType = dynamic_cast<StructType *>( t.pointer() );
+	if ( structType )
 	{
+		if ( myCurInitType == ASSIGN )
+			curStream() << '{';
+
 		if ( myCurInitType == FUNC )
 		{
-			curStream() << "$$$$ = ";
-			t->generateCastFrom( elements[index], ctxt );
-			curStream() << ';';
+			for( MemberVectorConstIterator it = structType->members().begin();
+				 it != structType->members().end();
+				 ++it )
+			{
+				std::string name = varName + "." + it->name;
+
+				newlineAndIndent();
+
+				valueRecurse( ctxt, elements, it->type, index, name );
+			}
 		}
 		else
-			t->generateCastFrom( elements[index], ctxt );
-		++index;
+		{
+			pushIndent();
+			for( MemberVectorConstIterator it = structType->members().begin();
+				 it != structType->members().end();
+				 ++it )
+			{
+				if ( it != structType->members().begin() )
+					curStream() << ", ";
+
+				valueRecurse( ctxt, elements, it->type, index, varName );
+			}
+			popIndent();
+		}
+		if ( myCurInitType == ASSIGN )
+		{
+			newlineAndIndent();
+			curStream() << "}";
+		}
+		return;
 	}
+
+	if ( myCurInitType == FUNC )
+	{
+		curStream() << varName << " = ";
+		t->generateCastFrom( elements[index], ctxt );
+		curStream() << ';';
+	}
+	else
+		t->generateCastFrom( elements[index], ctxt );
+	++index;
 }
 
 
@@ -1337,7 +1404,7 @@ CPPGenerator::doInit( InitType initT, CodeLContext &ctxt,
 				curStream() << ';';
 				std::stringstream varAssignB;
 				pushStream( varAssignB );
-				if ( ! initV.cast<ValueNode>() )
+				if ( ! dynamic_cast<ValueNode *>( initV.pointer() ) )
 				{
 					pushIndent();
 					addIndent();
@@ -1402,37 +1469,88 @@ CPPGenerator::findBuiltinType( std::string &typeName,
 							   const ArrayTypePtr &arrayType,
 							   CodeLContext &ctxt )
 {
-	FloatTypePtr fltType = ctxt.newFloatType();
+	int sx = arrayType->size();
 
-	SizeVector sizes;
-	arrayType->sizes( sizes );
-
-	if ( arrayType->elementType()->isSameTypeAs( fltType ) )
+	if ( dynamic_cast<FloatType *>( arrayType->elementType().pointer() ) )
 	{
-		if ( sizes.size() == 1 )
+		ArrayType *x = dynamic_cast<ArrayType *>( arrayType->elementType().pointer() );
+		// not x makes sure we are of size 1 (performance critical code, avoid
+		// creation of RcPtr type w/ lock)
+		if ( ! x && sx > 0 )
 		{
-			switch ( sizes[0] )
+			switch ( sx )
 			{
 				case 2:
 				case 3:
 				case 4:
-					typeName = getVectorType( sizes[0] );
+					typeName = getVectorType( sx );
 					break;
 				default:
 				{
 					// just do a C array of the low level type
-//					std::cout << "sizes[0]: " << sizes[0] << std::endl;
 					typeName = getPrecisionType();
 					std::stringstream pB;
-					pB << '[' << sizes[0] << ']';
+					pB << '[' << sx << ']';
 					postDecl = pB.str();
 					break;
 				}
 			}
 		}
+		return ! typeName.empty();
 	}
-	else if ( sizes.size() == 2 && sizes[0] == sizes[1] )
+
+	ArrayType *subArray = dynamic_cast<ArrayType *>( arrayType->elementType().pointer() );
+	if ( subArray && dynamic_cast<FloatType *>( subArray->elementType().pointer() ) &&
+		 sx == subArray->size() )
 	{
+		if ( sx == 3 )
+			typeName = getMatrixType( 3 );
+		else if ( sx == 4 )
+			typeName = getMatrixType( 4 );
+
+		return ! typeName.empty();
+	}
+
+	if ( dynamic_cast<IntType *>( arrayType->elementType().pointer() ) )
+	{
+		ArrayType *x = dynamic_cast<ArrayType *>( arrayType->elementType().pointer() );
+		int sx = arrayType->size();
+		// not x makes sure we are of size 1 (performance critical code, avoid
+		// creation of RcPtr type w/ lock)
+		if ( ! x && sx > 0 )
+		{
+			switch ( sx )
+			{
+				case 2:
+					typeName = NAMESPACE(IMATH_NAMESPACE, "V2i");
+					break;
+				case 3:
+					typeName = NAMESPACE(IMATH_NAMESPACE, "V3i");
+					break;
+				case 4:
+					typeName = NAMESPACE(IMATH_NAMESPACE, "V4i");
+					break;
+				default:
+				{
+					// just do a C array of the low level type
+					typeName = "int";
+					std::stringstream pB;
+					pB << '[' << sx << ']';
+					postDecl = pB.str();
+					break;
+				}
+			}
+		}
+		return ! typeName.empty();
+	}
+
+	SizeVector sizes;
+	arrayType->sizes( sizes );
+
+	if ( sizes.size() == 2 && sizes[0] == sizes[1] )
+	{
+		FloatTypePtr fltType = ctxt.newFloatType();
+
 		if ( arrayType->elementType()->isSameTypeAs(
 				 ctxt.newArrayType( fltType, 3 ) ) )
 		{
@@ -1462,7 +1580,6 @@ CPPGenerator::findBuiltinType( std::string &typeName,
 				default:
 				{
 					// just do a C array of the low level type
-					std::cout << "sizes[0]: " << sizes[0] << std::endl;
 					typeName = "int";
 					std::stringstream pB;
 					pB << '[' << sizes[0] << ']';
@@ -1481,6 +1598,35 @@ CPPGenerator::findBuiltinType( std::string &typeName,
 
 
 bool
+CPPGenerator::canBeBuiltinType( const ArrayType *arrayType )
+{
+	if ( dynamic_cast<FloatType *>( arrayType->elementType().pointer() ) ||
+		 dynamic_cast<IntType *>( arrayType->elementType().pointer() ) )
+	{
+		ArrayType *x = dynamic_cast<ArrayType *>( arrayType->elementType().pointer() );
+		// not x makes sure we are of size 1 (performance critical code, avoid
+		// creation of RcPtr type w/ lock)
+		if ( ! x && arrayType->size() > 0 )
+			return true;
+		return false;
+	}
+	
+	ArrayType *subArray = dynamic_cast<ArrayType *>( arrayType->elementType().pointer() );
+	if ( subArray && dynamic_cast<FloatType *>( subArray->elementType().pointer() ) &&
+		 arrayType->size() == subArray->size() )
+	{
+		if ( arrayType->size() == 3 || arrayType->size() == 4 )
+			return true;
+	}
+
+	return false;
+}
+
+
+////////////////////////////////////////
+
+
+bool
 CPPGenerator::checkNeedInitInModuleInit( const ExprNodePtr &initV, bool deep )
 {
 	if ( ! initV )
@@ -1489,7 +1635,25 @@ CPPGenerator::checkNeedInitInModuleInit( const ExprNodePtr &initV, bool deep )
 	if ( isAllLiterals( initV ) )
 		return false;
 
-	CallNodePtr c = initV.cast<CallNode>();
+	ValueNode *val = dynamic_cast<ValueNode *>( initV.pointer() );
+	if ( val )
+	{
+		bool retval = false;
+		// make sure we check every value for all possible functions
+		for ( size_t i = 0, N = val->elements.size(); i != N; ++i )
+		{
+			bool a = checkNeedInitInModuleInit( val->elements[i] );
+			if ( a && ! retval )
+			{
+				if ( ! deep )
+					return true;
+				retval = true;
+			}
+		}
+		return true;
+	}
+
+	CallNode *c = dynamic_cast<CallNode *>( initV.pointer() );
 	if ( c )
 	{
 		bool retval = false;
@@ -1520,24 +1684,6 @@ CPPGenerator::checkNeedInitInModuleInit( const ExprNodePtr &initV, bool deep )
 		return retval;
 	}
 
-	ValueNodePtr val = initV.cast<ValueNode>();
-	if ( val )
-	{
-		bool retval = false;
-		// make sure we check every value for all possible functions
-		for ( size_t i = 0, N = val->elements.size(); i != N; ++i )
-		{
-			bool a = checkNeedInitInModuleInit( val->elements[i] );
-			if ( a && ! retval )
-			{
-				if ( ! deep )
-					return true;
-				retval = true;
-			}
-		}
-		return true;
-	}
-
 	BinaryOpNodePtr bOp = initV.cast<BinaryOpNode>();
 	if ( bOp )
 	{
@@ -1566,13 +1712,13 @@ CPPGenerator::isAllLiterals( const ExprNodePtr &v )
 	if ( ! v )
 		return false;
 
-	if ( v.cast<LiteralNode>() )
+	if ( dynamic_cast<LiteralNode *>( v.pointer() ) )
 		return true;
 
-	if ( v.cast<NameNode>() )
+	if ( dynamic_cast<NameNode *>( v.pointer() ) )
 		return false;
 
-	ValueNodePtr val = v.cast<ValueNode>();
+	ValueNode *val = dynamic_cast<ValueNode *>( v.pointer() );
 	if ( val )
 	{
 		for ( size_t i = 0, N = val->elements.size(); i != N; ++i )
@@ -1611,10 +1757,21 @@ CPPGenerator::usesUninitLocalGlobals( const ExprNodePtr &v )
 	if ( ! v )
 		return false;
 
-	if ( v.cast<LiteralNode>() )
+	if ( dynamic_cast<LiteralNode *>( v.pointer() ) )
 		return false;
 
-	NameNodePtr namePtr = v.cast<NameNode>();
+	ValueNode *val = dynamic_cast<ValueNode *>( v.pointer() );
+	if ( val )
+	{
+		for ( size_t i = 0, N = val->elements.size(); i != N; ++i )
+		{
+			if ( usesUninitLocalGlobals( val->elements[i] ) )
+				return true;
+		}
+		return false;
+	}
+
+	NameNode *namePtr = dynamic_cast<NameNode *>( v.pointer() );
 	if ( namePtr )
 	{
 		if ( namePtr->info->module() == myCurModule )
@@ -1639,17 +1796,6 @@ CPPGenerator::usesUninitLocalGlobals( const ExprNodePtr &v )
 				return true;
 		}
 
-		return false;
-	}
-
-	ValueNodePtr val = v.cast<ValueNode>();
-	if ( val )
-	{
-		for ( size_t i = 0, N = val->elements.size(); i != N; ++i )
-		{
-			if ( usesUninitLocalGlobals( val->elements[i] ) )
-				return true;
-		}
 		return false;
 	}
 

@@ -115,7 +115,8 @@ protected:
 	};
 
 	void valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
-					   const DataTypePtr &t, size_t &index );
+					   const DataTypePtr &t, size_t &index,
+					   const std::string &varName );
 	InitType variable( CodeLContext &ctxt,
 					   const std::string &name, const DataTypePtr &t,
 					   bool isConst, bool isInput, bool isWritable );
@@ -126,6 +127,8 @@ protected:
 						  std::string &postDecl,
 						  const ArrayTypePtr &array,
 						  CodeLContext &ctxt );
+	bool canBeBuiltinType( const ArrayType *array );
+
 	bool checkNeedInitInModuleInit( const ExprNodePtr &initV, bool deep = false );
 	bool isAllLiterals( const ExprNodePtr &v );
 	bool usesUninitLocalGlobals( const ExprNodePtr &v );

@@ -102,6 +102,9 @@ public:
 	// The main body of code...
 	void emitCode( std::ostream &out );
 
+	// Utility driver code emission
+	void emitDriverCode( std::ostream &out );
+
 private:
     virtual FunctionCallPtr	newFunctionCallInternal( const SymbolInfoPtr info,
 													 const std::string &functionName );

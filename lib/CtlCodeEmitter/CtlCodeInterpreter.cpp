@@ -69,6 +69,9 @@
 namespace Ctl {
 
 
+////////////////////////////////////////
+
+
 CodeInterpreter::CodeInterpreter( void )
 		: Interpreter(), myLanguage( CPP03 ), myLanguageGenerator( NULL )
 {
@@ -76,10 +79,16 @@ CodeInterpreter::CodeInterpreter( void )
 }
 
 
+////////////////////////////////////////
+
+
 CodeInterpreter::~CodeInterpreter( void )
 {
 	delete myLanguageGenerator;
 }
+
+
+////////////////////////////////////////
 
 
 size_t
@@ -89,16 +98,26 @@ CodeInterpreter::maxSamples( void ) const
 }
 
 
+////////////////////////////////////////
+
+
 void	
 CodeInterpreter::setMaxInstCount( unsigned long count )
 {
 }
 
 
+////////////////////////////////////////
+
+
 void	
 CodeInterpreter::abortAllPrograms( void )
 {
 }
+
+
+////////////////////////////////////////
+
 
 void
 CodeInterpreter::setLanguage( Language l )
@@ -140,6 +159,10 @@ CodeInterpreter::setPrecision( LanguageGenerator::Precision p )
 	myLanguageGenerator->setPrecision( p );
 }
 
+
+////////////////////////////////////////
+
+
 void
 CodeInterpreter::initStdLibrary( void )
 {
@@ -157,11 +180,17 @@ CodeInterpreter::initStdLibrary( void )
 }
 
 
+////////////////////////////////////////
+
+
 void
 CodeInterpreter::emitHeader( std::ostream &out )
 {
 	out << myLanguageGenerator->getHeaderCode();
 }
+
+
+////////////////////////////////////////
 
 
 void
@@ -172,12 +201,27 @@ CodeInterpreter::emitCode( std::ostream &out )
 }
 
 
+////////////////////////////////////////
+
+
+void
+CodeInterpreter::emitDriverCode( std::ostream &out )
+{
+}
+
+
+////////////////////////////////////////
+
+
 Module *
 CodeInterpreter::newModule( const std::string &moduleName,
 							const std::string &fileName )
 {
     return new CodeModule( moduleName, fileName );
 }
+
+
+////////////////////////////////////////
 
 
 FunctionCallPtr
@@ -189,6 +233,9 @@ CodeInterpreter::newFunctionCallInternal( const SymbolInfoPtr info,
     return new CodeFunctionCall( *this, functionName,
 								 info->type(), info->addr(), symtab() );
 }
+
+
+////////////////////////////////////////
 
 
 LContext *

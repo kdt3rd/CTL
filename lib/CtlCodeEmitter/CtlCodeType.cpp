@@ -794,31 +794,31 @@ void
 CodeFloatType::generateCastFrom( const ExprNodePtr &expr,
 								 LContext &ctxt ) const
 {
-	if (expr->type.cast<BoolType>())
+	if ( dynamic_cast<FloatType *>( expr->type.pointer() ) )
 	{
 		expr->generateCode( ctxt );
 		return;
 	}
 
-	if (expr->type.cast<IntType>())
+	if ( dynamic_cast<BoolType *>( expr->type.pointer() ) )
 	{
 		expr->generateCode( ctxt );
 		return;
 	}
 
-	if (expr->type.cast<UIntType>())
+	if ( dynamic_cast<IntType *>( expr->type.pointer() ) )
 	{
 		expr->generateCode( ctxt );
 		return;
 	}
 
-	if (expr->type.cast<HalfType>())
+	if ( dynamic_cast<UIntType *>( expr->type.pointer() ) )
 	{
 		expr->generateCode( ctxt );
 		return;
 	}
 
-	if (expr->type.cast<FloatType>())
+	if ( dynamic_cast<HalfType *>( expr->type.pointer() ) )
 	{
 		expr->generateCode( ctxt );
 		return;
@@ -838,7 +838,8 @@ CodeFloatType::generateCode( const SyntaxNodePtr &node,
 		return;
 
 	CodeLContext &lctxt = static_cast<CodeLContext &>(ctxt);
-	if (UnaryOpNodePtr unOp = node.cast<UnaryOpNode>())
+	UnaryOpNode *unOp = dynamic_cast<UnaryOpNode *>( node.pointer() );
+	if ( unOp )
 	{
 		switch (unOp->op)
 		{
@@ -856,7 +857,8 @@ CodeFloatType::generateCode( const SyntaxNodePtr &node,
 		return;
 	}
 
-	if (BinaryOpNodePtr binOp = node.cast<BinaryOpNode>())
+	BinaryOpNode *binOp = dynamic_cast<BinaryOpNode *>( node.pointer() );
+	if ( binOp )
 	{
 		switch (binOp->op)
 		{
@@ -885,16 +887,16 @@ CodeFloatType::generateCode( const SyntaxNodePtr &node,
 		return;
 	}
 
-	if ( node.cast<CallNode>() )
-	{
-		//
-		// Push a placeholder for the return value for a call to
-		// a function that returns an int.
-		//
+//	if ( node.cast<CallNode>() )
+//	{
+//		//
+//		// Push a placeholder for the return value for a call to
+//		// a function that returns an int.
+//		//
 //		slcontext.addInst (new CodePushPlaceholderInst (alignedObjectSize(),
 //														node->lineNumber));
-		return;
-	}
+//		return;
+//	}
 }
 
 
@@ -1100,14 +1102,15 @@ void
 CodeArrayType::generateCode( const SyntaxNodePtr &node,
 							 LContext &ctxt ) const
 {
+#if 0
 //	CodeLContext &slcontext = static_cast <CodeLContext &> (lcontext);
 
-	VariableNodePtr var = node.cast<VariableNode>();
-	if( var && var->initialValue.cast<ValueNode>())
+	VariableNode *var = dynamic_cast<VariableNode *>( node.pointer() );
+	if( var && dynamic_cast<ValueNode *>( var->initialValue.pointer() ) )
 	{
-		SizeVector sizes;
-		SizeVector offsets;
-		coreSizes(0, sizes, offsets);
+//		SizeVector sizes;
+//		SizeVector offsets;
+//		coreSizes(0, sizes, offsets);
 //		slcontext.addInst (new CodeInitializeInst(sizes, 
 //												  offsets,
 //												  node->lineNumber));
@@ -1119,7 +1122,7 @@ CodeArrayType::generateCode( const SyntaxNodePtr &node,
 //						   (size(), elementSize(), node->lineNumber));
 		return;
 	}
-	else if ( node.cast<ArrayIndexNode>() )
+	else if ( dynamic_cast<ArrayIndexNode *>( node.pointer() ) )
 	{
 		if(unknownSize() || unknownElementSize())
 		{
@@ -1137,18 +1140,19 @@ CodeArrayType::generateCode( const SyntaxNodePtr &node,
 		}
 		return;
 	}
-	else if ( node.cast<SizeNode>() )
+	else if ( dynamic_cast<SizeNode *>( node.pointer() ) )
 	{
 		assert(size() == 0);
 //		slcontext.addInst (new CodePushRefInst (unknownSize(), 
 //												node->lineNumber));
 	}
-	else if (node.cast<CallNode>())
+	else if ( dynamic_cast<CallNode *>( node.pointer() ) )
 	{
 //		slcontext.addInst (new CodePushPlaceholderInst(objectSize(), 
 //													   node->lineNumber));
 		return;
 	}
+#endif
 }
 
 
