@@ -142,6 +142,9 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"\n"
 		"namespace _ctlcc_ {\n"
 		"\n"
+		"struct Chromaticities { " << NAMESPACE( IMATH_NAMESPACE, "V2f" ) << " red; " << NAMESPACE( IMATH_NAMESPACE, "V2f" ) << " green; " << NAMESPACE( IMATH_NAMESPACE, "V2f" ) << " blue; " << NAMESPACE( IMATH_NAMESPACE, "V2f" ) << " white; };\n"
+		"struct Box2i { " << NAMESPACE( IMATH_NAMESPACE, "V2i" ) << " min; " << NAMESPACE( IMATH_NAMESPACE, "V2i" ) << " max; };\n"
+		"struct Box2f { " << NAMESPACE( IMATH_NAMESPACE, "V2f" ) << " min; " << NAMESPACE( IMATH_NAMESPACE, "V2f" ) << " max; };\n\n"
 		"static inline void assert( bool v ) { if (!v) throw std::logic_error( \"Assertion failure\" ); }\n"
 		"\n"
 		"static inline void print_bool( bool v ) { std::cout << (v ? \"true\" : \"false\"); }\n"
@@ -246,7 +249,7 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"{\n"
 		"    " << precType << " Lstar = " << precType << "(116) * __cspace_f( XYZ.y / XYZn.y ) - " << precType << "(16);\n"
 		"    " << precType << " ustar = " << precType << "(13) * Lstar * ( __cspace_uprime( XYZ ) - __cspace_uprime( XYZn ) );\n"
-		"    " << precType << " ustar = " << precType << "(13) * Lstar * ( __cspace_vprime( XYZ ) - __cspace_vprime( XYZn ) );\n"
+		"    " << precType << " vstar = " << precType << "(13) * Lstar * ( __cspace_vprime( XYZ ) - __cspace_vprime( XYZn ) );\n"
 		"    return " << precVec3 << "( Lstar, ustar, vstar );\n"
 		"}\n"
 		"static inline " << precVec3 << " LuvtoXYZ( const " << precVec3 << " &Luv, const " << precVec3 << " &XYZn )\n"
@@ -260,7 +263,7 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"    " << precType << " Y = XYZn.y * __cspace_fInverse( fY );\n"
 		"    " << precType << " d = " << precType << "(4) * (" << precType << "(13) * Lstar * vnprime + vstar);\n"
 		"    " << precType << " X = " << precType << "(9) * (" << precType << "(13) * Lstar * unprime + ustar) * Y / d;\n"
-		"    " << precType << " Z = " << precType << "-( " << precType << "(3) * ustarr + " << precType << "(13) * Lstar * ( " << precType << "(-12) + " << precType << "(3) * unprime + " << precType << "(20) * vnprime ) + " << precType << "(20) * vstar ) * Y / d;\n"
+		"    " << precType << " Z = -( " << precType << "(3) * ustar + " << precType << "(13) * Lstar * ( " << precType << "(-12) + " << precType << "(3) * unprime + " << precType << "(20) * vnprime ) + " << precType << "(20) * vstar ) * Y / d;\n"
 		"    return " << precVec3 << "( X, Y, Z );\n"
 		"}\n"
 		"static inline " << precVec3 << " XYZtoLab( const " << precVec3 << " &XYZ, const " << precVec3 << " &XYZn )\n"
@@ -268,7 +271,7 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"    " << precType << " tmpY = __cspace_f( XYZ.y / XYZn.y );\n"
 		"    " << precType << " Lstar = " << precType << "(116) * tmpY - " << precType << "(16);\n"
 		"    " << precType << " astar = " << precType << "(500) * ( __cspace_f( XYZ.x / XYZn.x ) -  tmpY );\n"
-		"    " << precType << " astar = " << precType << "(200) * ( tmpY - __cspace_f( XYZ.z / XYZn.z ) );\n"
+		"    " << precType << " bstar = " << precType << "(200) * ( tmpY - __cspace_f( XYZ.z / XYZn.z ) );\n"
 		"    return " << precVec3 << "( Lstar, astar, bstar );\n"
 		"}\n"
 		"static inline " << precVec3 << " LabtoXYZ( const " << precVec3 << " &Lab, const " << precVec3 << " &XYZn )\n"
@@ -285,6 +288,16 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"    return " << precVec3 << "( X, Y, Z );\n"
 		"}\n"
 		"\n"
+		"static inline " << precType << " lookup1D( " << precType << " table[], int size, " << precType << " pMin, " << precType << " pMax, " << precType << " p )\n"
+		"{\n"
+		"    int iMax = size - 1;\n"
+		"    " << precType << " r = ( clamp( p, pMin, pMax ) - pMin ) / ( pMax - pMin ) * iMax;\n"
+		"    int i = static_cast<int>( r );\n"
+		"    " << precType << " u = r - static_cast<" << precType << ">( i );\n"
+		"    " << precType << " t0 = table[i];\n"
+		"    " << precType << " t1 = table[std::min( i + 1, iMax )];\n"
+		"    return t0 + u * ( t1 - t0 );\n"
+		"}\n"
 		"} // namespace _ctlcc_\n\n";
 
 	return libSetupB.str();
@@ -324,9 +337,7 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 	Module *oldModule = myCurModule;
 	myCurModule = ctxt.module();
 	std::string mName = cleanName( myCurModule->name() );
-	std::cout << "Generating code for module '" << mName << "'" << std::endl;
 
-	std::cout << "Extracting Literal Constants..." << std::endl;
 	extractLiteralConstants( m.constants, ctxt );
 	pushStream( myCodeStream );
 
@@ -341,7 +352,6 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 	++myInModuleInit;
 	myCurModuleInit.push_back( std::vector<std::string>() );
 
-	std::cout << "Generating structs..." << std::endl;
 	const std::vector< std::pair< std::string, MemberVector > > &theStructs =
 		ctxt.structs();
 	if ( ! theStructs.empty() )
@@ -364,7 +374,7 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 			curStream() << ";\n";
 		}
 	}
-	std::cout << "Forward declare used funcs..." << std::endl;
+
 	// Forward declare any functions used in initializing variables
 	FunctionNodePtr function = m.functions;
 	++myDoForwardDecl;
@@ -409,7 +419,6 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 		curStream() << "static __ctlcc_InitVals_" << mName << " __ctlcc_GlobalInitializer_" << mName << ";\n\n";
 	}
 
-	std::cout << "Generating functions..." << std::endl;
 	function = m.functions;
 	while ( function )
 	{
@@ -481,6 +490,9 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 			variable( ctxt, parm.name, parm.type,
 					  parm.access == RWA_READ, true,
 					  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
+
+			if ( needsSizeArgument( parm.type ) )
+				curStream() << ", int " << parm.name << "_size";
 		}
 		curStream() << " );";
 		popStream();
@@ -505,6 +517,9 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 			variable( ctxt, parm.name, parm.type,
 					  parm.access == RWA_READ, true,
 					  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
+
+			if ( needsSizeArgument( parm.type ) )
+				curStream() << ", int " << parm.name << "_size";
 		}
 		curStream() << " );";
 		return;
@@ -536,6 +551,9 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 		variable( ctxt, parm.name, parm.type,
 				  parm.access == RWA_READ, true,
 				  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
+
+		if ( needsSizeArgument( parm.type ) )
+			curStream() << ", int " << parm.name << "_size";
 	}
 	curStream() << " )";
 	pushBlock();
@@ -837,7 +855,8 @@ CPPGenerator::member( CodeLContext &ctxt, const CodeMemberNode &v )
 void
 CPPGenerator::size( CodeLContext &ctxt, const CodeSizeNode &v )
 {
-	std::cout << "what is the size operator supposed to return? Should just be v.size()" << std::endl;
+	std::cout << "Need to check if it's a function parameter and retrieve <name>_size, or just extract the size value and inject it" << std::endl;
+	throw std::logic_error( "Function not yet implemented" );
 }
 
 
@@ -920,7 +939,7 @@ CPPGenerator::uintLit( CodeLContext &ctxt, const CodeUIntLiteralNode &v )
 void
 CPPGenerator::halfLit( CodeLContext &ctxt, const CodeHalfLiteralNode &v )
 {
-	curStream() << "half( " << std::setprecision( std::numeric_limits<half>::digits10 ) << static_cast<float>( v.value ) << " )";
+	curStream() << "half( " << std::setprecision( std::numeric_limits<half>::digits ) << static_cast<float>( v.value ) << " )";
 }
 
 
@@ -930,7 +949,7 @@ CPPGenerator::halfLit( CodeLContext &ctxt, const CodeHalfLiteralNode &v )
 void
 CPPGenerator::floatLit( CodeLContext &ctxt, const CodeFloatLiteralNode &v )
 {
-	curStream() << std::setprecision( std::numeric_limits<float>::digits10 ) << static_cast<float>( v.value );
+	curStream() << std::setprecision( std::numeric_limits<float>::digits ) << static_cast<float>( v.value );
 }
 
 
@@ -988,6 +1007,11 @@ CPPGenerator::call( CodeLContext &ctxt, const CodeCallNode &v )
 				curStream() << ", ";
 
 			parameters[i].type->generateCastFrom( v.arguments[i], ctxt );
+			if ( needsSizeArgument( parameters[i].type ) )
+			{
+				curStream() << ", ";
+				extractSizeAndAdd( v.arguments[i], ctxt );
+			}
 		}
 		for ( size_t N = parameters.size(); i < N; ++i )
 		{
@@ -1146,7 +1170,8 @@ CPPGenerator::emitToken( Token t )
 void
 CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 							const DataTypePtr &t, size_t &index,
-							const std::string &varName )
+							const std::string &varName,
+							bool isSubItem )
 {
 	ArrayType *arrayType = dynamic_cast<ArrayType *>( t.pointer() );
 	if ( arrayType )
@@ -1164,21 +1189,63 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 		pushIndent();
 		if ( myCurInitType == FUNC )
 		{
-			std::string builtinType;
-			std::string postDecl;
-			if ( ! canBeBuiltinType( arrayType ) )
+			std::string typeName, postDecl;
+//			if ( ! canBeBuiltinType( arrayType ) )
+			bool doCtor = false;
+			if ( ! findBuiltinType( typeName, postDecl, arrayType, ctxt ) )
 			{
 				newlineAndIndent();
 				curStream() << varName << ".resize( " << arrayType->size() << " );";
 			}
+			else
+				doCtor = true;
 
-			for (int i = 0; i < arrayType->size(); ++i)
+			if ( doCtor && isSubItem && postDecl.empty() )
+			{
+				myCurInitType = CTOR;
+				// we're a sub-type, we can treat this as a CTOR scenario
+				curStream() << varName << " = " << typeName << "( ";
+				for (int i = 0; i < arrayType->size(); ++i)
+				{
+					if ( i > 0 )
+						curStream() << ',';
+					if ( lineEveryItem )
+						newlineAndIndent();
+					else if ( i > 0 )
+						curStream() << ' ';
+
+					valueRecurse( ctxt, elements, arrayType->elementType(), index, varName, true );
+				}
+				curStream() << " );";
+				myCurInitType = FUNC;
+			}
+			else
 			{
 				std::stringstream nameB;
-				nameB << varName << "[" << i << "]";
+				nameB << varName << "[" << arrayType->size() << "]";
+				std::string varNameSubscript = nameB.str();
+				std::string::size_type startPos = varNameSubscript.find_last_of( '[' ) + 1;
+				std::string::size_type endPos = varNameSubscript.find_last_of( ']' );
+				for (int i = 0; i < arrayType->size(); ++i)
+				{
+					int curOut = i;
+					bool done = false;
+					for ( std::string::size_type x = endPos - 1; x >= startPos; --x )
+					{
+						if ( done )
+							varNameSubscript[x] = ' ';
+						else
+						{
+							varNameSubscript[x] = '0' + (curOut % 10);
+							curOut /= 10;
+							if ( curOut == 0 )
+								done = true;
+						}
+					}
 
-				newlineAndIndent();
-				valueRecurse( ctxt, elements, arrayType->elementType(), index, nameB.str() );
+					newlineAndIndent();
+					valueRecurse( ctxt, elements, arrayType->elementType(), index, varNameSubscript, true );
+				}
 			}
 		}
 		else
@@ -1192,7 +1259,7 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 				else if ( i > 0 )
 					curStream() << ' ';
 
-				valueRecurse( ctxt, elements, arrayType->elementType(), index, varName );
+				valueRecurse( ctxt, elements, arrayType->elementType(), index, varName, true );
 			}
 		}
 		popIndent();
@@ -1227,7 +1294,7 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 
 				newlineAndIndent();
 
-				valueRecurse( ctxt, elements, it->type, index, name );
+				valueRecurse( ctxt, elements, it->type, index, name, true );
 			}
 		}
 		else
@@ -1240,7 +1307,7 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 				if ( it != structType->members().begin() )
 					curStream() << ", ";
 
-				valueRecurse( ctxt, elements, it->type, index, varName );
+				valueRecurse( ctxt, elements, it->type, index, varName, true );
 			}
 			popIndent();
 		}
@@ -1416,6 +1483,7 @@ CPPGenerator::doInit( InitType initT, CodeLContext &ctxt,
 				else
 					initV->generateCode( ctxt );
 				popStream();
+
 				std::string initVal = varAssignB.str();
 				replaceInit( initVal, varName );
 
@@ -1542,52 +1610,6 @@ CPPGenerator::findBuiltinType( std::string &typeName,
 			}
 		}
 		return ! typeName.empty();
-	}
-
-	SizeVector sizes;
-	arrayType->sizes( sizes );
-
-	if ( sizes.size() == 2 && sizes[0] == sizes[1] )
-	{
-		FloatTypePtr fltType = ctxt.newFloatType();
-
-		if ( arrayType->elementType()->isSameTypeAs(
-				 ctxt.newArrayType( fltType, 3 ) ) )
-		{
-			typeName = getMatrixType( 3 );
-		}
-		else if ( arrayType->elementType()->isSameTypeAs(
-					  ctxt.newArrayType( fltType, 4 ) ) )
-		{
-			typeName = getMatrixType( 4 );
-		}
-	}
-	else if ( arrayType->elementType()->isSameTypeAs( ctxt.newIntType() ) )
-	{
-		if ( sizes.size() == 1 )
-		{
-			switch ( sizes[0] )
-			{
-				case 2:
-					typeName = NAMESPACE(IMATH_NAMESPACE, "V2i");
-					break;
-				case 3:
-					typeName = NAMESPACE(IMATH_NAMESPACE, "V3i");
-					break;
-				case 4:
-					typeName = NAMESPACE(IMATH_NAMESPACE, "V4i");
-					break;
-				default:
-				{
-					// just do a C array of the low level type
-					typeName = "int";
-					std::stringstream pB;
-					pB << '[' << sizes[0] << ']';
-					postDecl = pB.str();
-					break;
-				}
-			}
-		}
 	}
 
 	return ! typeName.empty();
@@ -1848,6 +1870,25 @@ CPPGenerator::extractLiteralConstants( const StatementNodePtr &consts,
 		}
 		curConst = curConst->next;
 	}
+}
+
+
+////////////////////////////////////////
+
+
+bool
+CPPGenerator::needsSizeArgument( const DataTypePtr &p )
+{
+	return false;
+}
+
+
+////////////////////////////////////////
+
+
+void
+CPPGenerator::extractSizeAndAdd( const ExprNodePtr &p, CodeLContext &ctxt )
+{
 }
 
 } // namespace Ctl

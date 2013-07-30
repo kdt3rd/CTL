@@ -1092,7 +1092,7 @@ void
 CodeArrayType::generateCastFrom( const ExprNodePtr &expr,
 								 LContext &ctxt ) const
 {
-	assert(isSameTypeAs(expr->type));
+//	assert(isSameTypeAs(expr->type));
 	expr->generateCode( ctxt );
 	return;
 }

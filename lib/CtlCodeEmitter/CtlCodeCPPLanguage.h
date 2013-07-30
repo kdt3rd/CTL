@@ -116,7 +116,8 @@ protected:
 
 	void valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 					   const DataTypePtr &t, size_t &index,
-					   const std::string &varName );
+					   const std::string &varName,
+					   bool isSubItem = false );
 	InitType variable( CodeLContext &ctxt,
 					   const std::string &name, const DataTypePtr &t,
 					   bool isConst, bool isInput, bool isWritable );
@@ -136,7 +137,10 @@ protected:
 	// returns true if there are any non-trivial constants
 	void extractLiteralConstants( const StatementNodePtr &consts,
 								  CodeLContext &ctxt );
-	
+
+	bool needsSizeArgument( const DataTypePtr &p );
+	void extractSizeAndAdd( const ExprNodePtr &p, CodeLContext &ctxt );
+
 	bool myCPP11Mode;
 	std::stringstream myCodeStream;
 	std::stringstream myHeaderStream;
