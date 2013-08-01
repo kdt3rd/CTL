@@ -48,16 +48,6 @@
 #include "CtlCodeLanguageGenerator.h"
 #include <iomanip>
 #include <stdexcept>
-#include <ImfVersion.h>
-
-#ifdef OPENEXR_IMF_NAMESPACE
-# include <ImathNamespace.h>
-#else
-# define IMATH_NAMESPACE Imath
-#endif
-
-#define STRINGIZE(X) #X
-#define NAMESPACE(N) STRINGIZE(N) "::"
 
 namespace Ctl
 {
@@ -256,54 +246,6 @@ LanguageGenerator::getPrecisionType( void ) const
 	}
 
 	return std::string( "unknown" );
-}
-
-
-////////////////////////////////////////
-
-
-std::string
-LanguageGenerator::getVectorType( int n ) const
-{
-	std::stringstream buf;
-	switch ( myPrecision )
-	{
-		case FLOAT:
-			buf << NAMESPACE(IMATH_NAMESPACE) << "V" << n << 'f';
-			break;
-		case DOUBLE:
-			buf << NAMESPACE(IMATH_NAMESPACE) << "V" << n << 'd';
-			break;
-		case LONG_DOUBLE:
-			buf << NAMESPACE(IMATH_NAMESPACE) << "Vec" << n << "<long double>";
-			break;
-	}
-	
-	return buf.str();
-}
-
-
-////////////////////////////////////////
-
-
-std::string
-LanguageGenerator::getMatrixType( int n ) const
-{
-	std::stringstream buf;
-	switch ( myPrecision )
-	{
-		case FLOAT:
-			buf << NAMESPACE(IMATH_NAMESPACE) << "M" << n << n << 'f';
-			break;
-		case DOUBLE:
-			buf << NAMESPACE(IMATH_NAMESPACE) << "M" << n << n << 'd';
-			break;
-		case LONG_DOUBLE:
-			buf << NAMESPACE(IMATH_NAMESPACE) << "Matrix" << n << n << "<long double>";
-			break;
-	}
-	
-	return buf.str();
 }
 
 

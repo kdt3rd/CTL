@@ -149,8 +149,6 @@ protected:
 
 	std::string getPrecisionFunctionSuffix( void ) const;
 	std::string getPrecisionType( void ) const;
-	std::string getVectorType( int n ) const;
-	std::string getMatrixType( int n_by_n ) const;
 
 	void registerMainRoutine( const std::string &name, const std::string &nsName,
 							  const SymbolInfoPtr &fnInfo );

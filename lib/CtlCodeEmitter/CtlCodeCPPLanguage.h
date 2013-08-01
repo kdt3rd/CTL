@@ -138,8 +138,8 @@ protected:
 	void extractLiteralConstants( const StatementNodePtr &consts,
 								  CodeLContext &ctxt );
 
-	bool needsSizeArgument( const DataTypePtr &p );
-	void extractSizeAndAdd( const ExprNodePtr &p, CodeLContext &ctxt );
+	bool checkNeedsSizeArgument( const DataTypePtr &p, const std::string &base_name, SizeVector &sizes );
+	void extractSizeAndAdd( const ExprNodePtr &p, SizeVector &sizes, CodeLContext &ctxt );
 
 	bool myCPP11Mode;
 	std::stringstream myCodeStream;

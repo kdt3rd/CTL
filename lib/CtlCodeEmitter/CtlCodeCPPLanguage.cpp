@@ -56,16 +56,6 @@
 #include <deque>
 #include <ctype.h>
 #include <stdexcept>
-#include <ImfVersion.h>
-
-#ifdef OPENEXR_IMF_NAMESPACE
-# include <ImathNamespace.h>
-#else
-# define IMATH_NAMESPACE Imath
-#endif
-
-#define STRINGIZE(X) #X
-#define NAMESPACE(N, T) STRINGIZE(N) "::" T
 
 namespace Ctl
 {
@@ -118,13 +108,10 @@ CPPGenerator::stdLibraryAndSetup( void )
 	std::stringstream libSetupB;
 	std::string precType = getPrecisionType();
 	std::string precSuffix = getPrecisionFunctionSuffix();
-	std::string precVec3 = getVectorType( 3 );
-	std::string precVec4 = getVectorType( 4 );
-	std::string precMat33 = getMatrixType( 3 );
-	std::string precMat44 = getMatrixType( 4 );
-	
+
 	libSetupB <<
 		"// C++ code automatically generated\n\n"
+		"#include <ImfVersion.h>\n"
 		"#include <ImathVec.h>\n"
 		"#include <ImathMatrix.h>\n"
 		"#include <ImathFun.h>\n"
@@ -136,103 +123,118 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"#include <stdexcept>\n"
 		"#include <limits>\n"
 		"#include <vector>\n"
-		"#include <CtlLookupTable.h>\n"
 		"\n"
-		"using namespace Ctl;\n"
+		"#ifdef OPENEXR_IMF_NAMESPACE\n"
+		"# include <ImathNamespace.h>\n"
+		"#else\n"
+		"# define IMATH_NAMESPACE Imath\n"
+		"#endif\n"
+		"\n"
+		"typedef " << precType << " ctl_number_t;\n"
+		"typedef IMATH_NAMESPACE::Vec2<ctl_number_t> ctl_vec2f_t;\n"
+		"typedef IMATH_NAMESPACE::Vec3<ctl_number_t> ctl_vec3f_t;\n"
+		"typedef IMATH_NAMESPACE::Vec4<ctl_number_t> ctl_vec4f_t;\n"
+		"typedef IMATH_NAMESPACE::V2i ctl_vec2i_t;\n"
+		"typedef IMATH_NAMESPACE::V3i ctl_vec3i_t;\n"
+		"typedef IMATH_NAMESPACE::V3i ctl_vec4i_t;\n"
+		"typedef IMATH_NAMESPACE::Matrix33<ctl_number_t> ctl_mat33f_t;\n"
+		"typedef IMATH_NAMESPACE::Matrix44<ctl_number_t> ctl_mat44f_t;\n"
 		"\n"
 		"namespace _ctlcc_ {\n"
 		"\n"
-		"struct Chromaticities { " << NAMESPACE( IMATH_NAMESPACE, "V2f" ) << " red; " << NAMESPACE( IMATH_NAMESPACE, "V2f" ) << " green; " << NAMESPACE( IMATH_NAMESPACE, "V2f" ) << " blue; " << NAMESPACE( IMATH_NAMESPACE, "V2f" ) << " white; };\n"
-		"struct Box2i { " << NAMESPACE( IMATH_NAMESPACE, "V2i" ) << " min; " << NAMESPACE( IMATH_NAMESPACE, "V2i" ) << " max; };\n"
-		"struct Box2f { " << NAMESPACE( IMATH_NAMESPACE, "V2f" ) << " min; " << NAMESPACE( IMATH_NAMESPACE, "V2f" ) << " max; };\n\n"
+		"using Imath::clamp;\n"
+		"\n"
+		"struct Chromaticities { ctl_vec2f_t red; ctl_vec2f_t green; ctl_vec2f_t blue; ctl_vec2f_t white; };\n"
+		"struct Box2i { ctl_vec2i_t min; ctl_vec2i_t max; };\n"
+		"struct Box2f { ctl_vec2f_t min; ctl_vec2f_t max; };\n\n"
 		"static inline void assert( bool v ) { if (!v) throw std::logic_error( \"Assertion failure\" ); }\n"
 		"\n"
 		"static inline void print_bool( bool v ) { std::cout << (v ? \"true\" : \"false\"); }\n"
 		"static inline void print_int( int v ) { std::cout << v; }\n"
 		"static inline void print_unsigned_int( unsigned int v ) { std::cout << v; }\n"
 		"static inline void print_half( half v ) { std::cout << v; }\n"
-		"static inline void print_float( " << precType << " v ) { std::cout << v; }\n"
+		"static inline void print_float( ctl_number_t v ) { std::cout << v; }\n"
 		"static inline void print_string( const std::string &v ) { std::cout << v; }\n"
 		"static inline void print_string( const char *v ) { std::cout << v; }\n"
 		"\n"
-		"static inline bool isfinite_f( " << precType << " v ) { return isfinite( v ); }\n"
-		"static inline bool isnormal_f( " << precType << " v ) { return isnormal( v ); }\n"
-		"static inline bool isnan_f( " << precType << " v ) { return isnan( v ); }\n"
-		"static inline bool isinf_f( " << precType << " v ) { return isinf( v ) != 0; }\n"
+		"static inline bool isfinite_f( ctl_number_t v ) { return isfinite( v ); }\n"
+		"static inline bool isnormal_f( ctl_number_t v ) { return isnormal( v ); }\n"
+		"static inline bool isnan_f( ctl_number_t v ) { return isnan( v ); }\n"
+		"static inline bool isinf_f( ctl_number_t v ) { return isinf( v ) != 0; }\n"
 		"static inline bool isfinite_h( half v ) { return v.isFinite(); }\n"
 		"static inline bool isnormal_h( half v ) { return v.isNormalized(); }\n"
 		"static inline bool isnan_h( half v ) { return v.isNan(); }\n"
 		"static inline bool isinf_h( half v ) { return v.isInfinity() != 0; }\n"
 		"\n"
-		"#define FLT_POS_INF std::numeric_limits<" << precType << ">::infinity()\n"
-		"#define FLT_NEG_INF (-std::numeric_limits<" << precType << ">::infinity())\n"
-		"#define FLT_NAN (-std::numeric_limits<" << precType << ">::quiet_NaN())\n"
+		"#define FLT_POS_INF std::numeric_limits<ctl_number_t>::infinity()\n"
+		"#define FLT_NEG_INF (-std::numeric_limits<ctl_number_t>::infinity())\n"
+		"#define FLT_NAN (-std::numeric_limits<ctl_number_t>::quiet_NaN())\n"
 		"#define HALF_POS_INF half::posInf()\n"
 		"#define HALF_NEG_INF half::negInf()\n"
 		"#define HALF_NAN half::qNan()\n"
 		"\n"
-		"static inline " << precType << " acos( " << precType << " v ) { return acos" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " asin( " << precType << " v ) { return asin" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " atan( " << precType << " v ) { return atan" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " atan2( " << precType << " y, " << precType << " x ) { return atan2" << precSuffix << "( y, x ); }\n"
-		"static inline " << precType << " cos( " << precType << " v ) { return cos" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " sin( " << precType << " v ) { return sin" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " tan( " << precType << " v ) { return tan" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " cosh( " << precType << " v ) { return cosh" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " sinh( " << precType << " v ) { return sinh" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " tanh( " << precType << " v ) { return tanh" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " exp( " << precType << " v ) { return exp" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " log( " << precType << " v ) { return log" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " log10( " << precType << " v ) { return log10" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " pow( " << precType << " x, " << precType << " y ) { return pow" << precSuffix << "( x, y ); }\n"
-		"static inline " << precType << " pow10( " << precType << " y ) { return pow" << precSuffix << "( 10.0, y ); }\n"
-		"static inline " << precType << " sqrt( " << precType << " v ) { return sqrt" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " fabs( " << precType << " v ) { return fabs" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " floor( " << precType << " v ) { return floor" << precSuffix << "( v ); }\n"
-		"static inline " << precType << " fmod( " << precType << " x, " << precType << " y ) { return fmod" << precSuffix << "( x, y ); }\n"
-		"static inline " << precType << " hypot( " << precType << " x, " << precType << " y ) { return hypot" << precSuffix << "( x, y ); }\n"
+		"static inline ctl_number_t acos( ctl_number_t v ) { return acos" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t asin( ctl_number_t v ) { return asin" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t atan( ctl_number_t v ) { return atan" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t atan2( ctl_number_t y, ctl_number_t x ) { return atan2" << precSuffix << "( y, x ); }\n"
+		"static inline ctl_number_t cos( ctl_number_t v ) { return cos" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t sin( ctl_number_t v ) { return sin" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t tan( ctl_number_t v ) { return tan" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t cosh( ctl_number_t v ) { return cosh" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t sinh( ctl_number_t v ) { return sinh" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t tanh( ctl_number_t v ) { return tanh" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t exp( ctl_number_t v ) { return exp" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t log( ctl_number_t v ) { return log" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t log10( ctl_number_t v ) { return log10" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t pow( ctl_number_t x, ctl_number_t y ) { return pow" << precSuffix << "( x, y ); }\n"
+		"static inline ctl_number_t pow10( ctl_number_t y ) { return pow" << precSuffix << "( 10.0, y ); }\n"
+		"static inline ctl_number_t sqrt( ctl_number_t v ) { return sqrt" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t fabs( ctl_number_t v ) { return fabs" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t floor( ctl_number_t v ) { return floor" << precSuffix << "( v ); }\n"
+		"static inline ctl_number_t fmod( ctl_number_t x, ctl_number_t y ) { return fmod" << precSuffix << "( x, y ); }\n"
+		"static inline ctl_number_t hypot( ctl_number_t x, ctl_number_t y ) { return hypot" << precSuffix << "( x, y ); }\n"
 		"\n"
-		"static inline half exp_h( " << precType << " v ) { return half( exp( v ) ); }\n"
-		"static inline " << precType << " log_h( half v ) { return log( float( v ) ); }\n"
-		"static inline " << precType << " log10_h( half v ) { return log10( float( v ) ); }\n"
-		"static inline half pow_h( half x, " << precType << " y ) { return half( pow( float( x ), y ) ); }\n"
-		"static inline half pow10_h( " << precType << " v ) { return half( pow( 10.0, v ) ); }\n"
+		"static inline half exp_h( ctl_number_t v ) { return half( exp( v ) ); }\n"
+		"static inline ctl_number_t log_h( half v ) { return log( float( v ) ); }\n"
+		"static inline ctl_number_t log10_h( half v ) { return log10( float( v ) ); }\n"
+		"static inline half pow_h( half x, ctl_number_t y ) { return half( pow( float( x ), y ) ); }\n"
+		"static inline half pow10_h( ctl_number_t v ) { return half( pow( 10.0, v ) ); }\n"
 		"\n"
-		"static inline " << precMat33 << " mult_f33_f33( const " << precMat33 << " &a, const " << precMat33 << " &b ) { return a * b; }\n"
-		"static inline " << precMat44 << " mult_f44_f44( const " << precMat44 << " &a, const " << precMat44 << " &b ) { return a * b; }\n"
-		"static inline " << precMat33 << " mult_f_f33( " << precType << " a, const " << precMat33 << " &b ) { return a * b; }\n"
-		"static inline " << precMat44 << " mult_f_f44( " << precType << " a, const " << precMat44 << " &b ) { return a * b; }\n"
-		"static inline " << precMat33 << " add_f33_f33( const " << precMat33 << " &a, const " << precMat33 << " &b ) { return a + b; }\n"
-		"static inline " << precMat44 << " add_f44_f44( const " << precMat44 << " &a, const " << precMat44 << " &b ) { return a + b; }\n"
-		"static inline " << precMat33 << " invert_f33( const " << precMat33 << " &a ) { return a.inverse(); }\n"
-		"static inline " << precMat44 << " invert_f44( const " << precMat44 << " &a ) { return a.inverse(); }\n"
-		"static inline " << precMat33 << " transpose_f33( const " << precMat33 << " &a ) { return a.transposed(); }\n"
-		"static inline " << precMat44 << " transpose_f44( const " << precMat44 << " &a ) { return a.transposed(); }\n"
-		"static inline " << precVec3 << " mult_f3_f33( const " << precVec3 << " &a, const " << precMat33 << " &b ) { return a * b; }\n"
-		"static inline " << precVec3 << " mult_f3_f44( const " << precVec3 << " &a, const " << precMat44 << " &b ) { return a * b; }\n"
-		"static inline " << precVec3 << " mult_f_f3( " << precType << " a, const " << precVec3 << " &b ) { return a * b; }\n"
-		"static inline " << precVec3 << " add_f3_f3( const " << precVec3 << " &a, const " << precVec3 << " &b ) { return a + b; }\n"
-		"static inline " << precVec3 << " sub_f3_f3( const " << precVec3 << " &a, const " << precVec3 << " &b ) { return a - b; }\n"
-		"static inline " << precVec3 << " cross_f3_f3( const " << precVec3 << " &a, const " << precVec3 << " &b ) { return a.cross( b ); }\n"
-		"static inline " << precType << " dot_f3_f3( const " << precVec3 << " &a, const " << precVec3 << " &b ) { return a.dot( b ); }\n"
-		"static inline " << precType << " length_f3( const " << precVec3 << " &a ) { return a.length(); }\n"
+		"static inline ctl_mat33f_t mult_f33_f33( const ctl_mat33f_t &a, const ctl_mat33f_t &b ) { return a * b; }\n"
+		"static inline ctl_mat44f_t mult_f44_f44( const ctl_mat44f_t &a, const ctl_mat44f_t &b ) { return a * b; }\n"
+		"static inline ctl_mat33f_t mult_f_f33( ctl_number_t a, const ctl_mat33f_t &b ) { return a * b; }\n"
+		"static inline ctl_mat44f_t mult_f_f44( ctl_number_t a, const ctl_mat44f_t &b ) { return a * b; }\n"
+		"static inline ctl_mat33f_t add_f33_f33( const ctl_mat33f_t &a, const ctl_mat33f_t &b ) { return a + b; }\n"
+		"static inline ctl_mat44f_t add_f44_f44( const ctl_mat44f_t &a, const ctl_mat44f_t &b ) { return a + b; }\n"
+		"static inline ctl_mat33f_t invert_f33( const ctl_mat33f_t &a ) { return a.inverse(); }\n"
+		"static inline ctl_mat44f_t invert_f44( const ctl_mat44f_t &a ) { return a.inverse(); }\n"
+		"static inline ctl_mat33f_t transpose_f33( const ctl_mat33f_t &a ) { return a.transposed(); }\n"
+		"static inline ctl_mat44f_t transpose_f44( const ctl_mat44f_t &a ) { return a.transposed(); }\n"
+		"static inline ctl_vec3f_t mult_f3_f33( const ctl_vec3f_t &a, const ctl_mat33f_t &b ) { return a * b; }\n"
+		"static inline ctl_vec3f_t mult_f3_f44( const ctl_vec3f_t &a, const ctl_mat44f_t &b ) { return a * b; }\n"
+		"static inline ctl_vec3f_t mult_f_f3( ctl_number_t a, const ctl_vec3f_t &b ) { return a * b; }\n"
+		"static inline ctl_vec3f_t add_f3_f3( const ctl_vec3f_t &a, const ctl_vec3f_t &b ) { return a + b; }\n"
+		"static inline ctl_vec3f_t sub_f3_f3( const ctl_vec3f_t &a, const ctl_vec3f_t &b ) { return a - b; }\n"
+		"static inline ctl_vec3f_t cross_f3_f3( const ctl_vec3f_t &a, const ctl_vec3f_t &b ) { return a.cross( b ); }\n"
+		"static inline ctl_number_t dot_f3_f3( const ctl_vec3f_t &a, const ctl_vec3f_t &b ) { return a.dot( b ); }\n"
+		"static inline ctl_number_t length_f3( const ctl_vec3f_t &a ) { return a.length(); }\n"
 		"\n"
 		"namespace {\n"
-		"static inline " << precType << " __cspace_f( " << precType << " x ) { if ( x > " << precType << "(0.008856) ) return pow( x, " << precType << "(1.0 / 3.0) ); return " << precType << "(7.787) * x + " << precType << "(16.0 / 116.0); }\n"
-		"static inline " << precType << " __cspace_fInverse( " << precType << " t ) { if ( t > " << precType << "(0.206892) ) return t * t * t; return " << precType << "(1.0/7.787) * ( t - " << precType << "(16.0/116.0) ); }\n"
-		"static inline " << precType << " __cspace_uprime( const " << precVec3 << " &XYZ ) { return ( XYZ.x * " << precType << "(4) ) / ( XYZ.x + " << precType << "(15) * XYZ.y + " << precType << "(3) * XYZ.z ); }\n"
-		"static inline " << precType << " __cspace_vprime( const " << precVec3 << " &XYZ ) { return ( XYZ.y * " << precType << "(9) ) / ( XYZ.x + " << precType << "(15) * XYZ.y + " << precType << "(3) * XYZ.z ); }\n"
+		"static inline ctl_number_t __cspace_f( ctl_number_t x ) { if ( x > ctl_number_t(0.008856) ) return pow( x, ctl_number_t(1.0 / 3.0) ); return ctl_number_t(7.787) * x + ctl_number_t(16.0 / 116.0); }\n"
+		"static inline ctl_number_t __cspace_fInverse( ctl_number_t t ) { if ( t > ctl_number_t(0.206892) ) return t * t * t; return ctl_number_t(1.0/7.787) * ( t - ctl_number_t(16.0/116.0) ); }\n"
+		"static inline ctl_number_t __cspace_uprime( const ctl_vec3f_t &XYZ ) { return ( XYZ.x * ctl_number_t(4) ) / ( XYZ.x + ctl_number_t(15) * XYZ.y + ctl_number_t(3) * XYZ.z ); }\n"
+		"static inline ctl_number_t __cspace_vprime( const ctl_vec3f_t &XYZ ) { return ( XYZ.y * ctl_number_t(9) ) / ( XYZ.x + ctl_number_t(15) * XYZ.y + ctl_number_t(3) * XYZ.z ); }\n"
 		"} // empty namespace\n\n"
-		"static inline " << precMat44 << " RGBtoXYZ( const Chromaticities &chroma, " << precType << " Y )\n"
+		"static inline ctl_mat44f_t RGBtoXYZ( const Chromaticities &chroma, ctl_number_t Y )\n"
 		"{\n"
-		"    static const " << precType << " one = " << precType << "(1);\n"
-		"    " << precType << " X = chroma.white.x * Y / chroma.white.y;\n"
-		"    " << precType << " Z = (one - chroma.white.x - chroma.white.y) * Y / chroma.white.y;\n"
-		"    " << precType << " d = chroma.red.x * (chroma.blue.y - chroma.green.y) + chroma.blue.x * (chroma.green.y - chroma.red.y) + chroma.green.x * (chroma.red.y - chroma.blue.y);\n"
-		"    " << precType << " Sr = (X * (chroma.blue.y - chroma.green.y) - chroma.green.x * (Y * (chroma.blue.y - one) + chroma.blue.y * (X + Z)) + chroma.blue.x * (Y * (chroma.green.y - one) + chroma.green.y * (X + Z))) / d;\n"
-		"    " << precType << " Sg = (X * (chroma.red.y - chroma.blue.y) + chroma.red.x * (Y * (chroma.blue.y - one) + chroma.blue.y * (X + Z)) - chroma.blue.x * (Y * (chroma.red.y - one) + chroma.red.y * (X + Z))) / d;\n"
-		"    " << precType << " Sb = (X * (chroma.green.y - chroma.red.y) - chroma.red.x * (Y * (chroma.green.y - one) + chroma.green.y * (X + Z)) + chroma.green.x * (Y * (chroma.red.y - one) + chroma.red.y * (X + Z))) / d;\n"
-		"    " << precMat44 << " M;\n"
+		"    static const ctl_number_t one = ctl_number_t(1);\n"
+		"    ctl_number_t X = chroma.white.x * Y / chroma.white.y;\n"
+		"    ctl_number_t Z = (one - chroma.white.x - chroma.white.y) * Y / chroma.white.y;\n"
+		"    ctl_number_t d = chroma.red.x * (chroma.blue.y - chroma.green.y) + chroma.blue.x * (chroma.green.y - chroma.red.y) + chroma.green.x * (chroma.red.y - chroma.blue.y);\n"
+		"    ctl_number_t Sr = (X * (chroma.blue.y - chroma.green.y) - chroma.green.x * (Y * (chroma.blue.y - one) + chroma.blue.y * (X + Z)) + chroma.blue.x * (Y * (chroma.green.y - one) + chroma.green.y * (X + Z))) / d;\n"
+		"    ctl_number_t Sg = (X * (chroma.red.y - chroma.blue.y) + chroma.red.x * (Y * (chroma.blue.y - one) + chroma.blue.y * (X + Z)) - chroma.blue.x * (Y * (chroma.red.y - one) + chroma.red.y * (X + Z))) / d;\n"
+		"    ctl_number_t Sb = (X * (chroma.green.y - chroma.red.y) - chroma.red.x * (Y * (chroma.green.y - one) + chroma.green.y * (X + Z)) + chroma.green.x * (Y * (chroma.red.y - one) + chroma.red.y * (X + Z))) / d;\n"
+		"    ctl_mat44f_t M;\n"
 		"    M[0][0] = Sr * chroma.red.x;\n"
 		"    M[0][1] = Sr * chroma.red.y;\n"
 		"    M[0][2] = Sr * (1 - chroma.red.x - chroma.red.y);\n"
@@ -244,59 +246,179 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"    M[2][2] = Sb * (1 - chroma.blue.x - chroma.blue.y);\n"
 		"    return M;\n"
 		"}\n"
-		"static inline " << precMat44 << " XYZtoRGB( const Chromaticities &chroma, " << precType << " Y ) { return RGBtoXYZ( chroma, Y ).inverse(); }\n"
-		"static inline " << precVec3 << " XYZtoLuv( const " << precVec3 << " &XYZ, const " << precVec3 << " &XYZn )\n"
+		"static inline ctl_mat44f_t XYZtoRGB( const Chromaticities &chroma, ctl_number_t Y ) { return RGBtoXYZ( chroma, Y ).inverse(); }\n"
+		"static inline ctl_vec3f_t XYZtoLuv( const ctl_vec3f_t &XYZ, const ctl_vec3f_t &XYZn )\n"
 		"{\n"
-		"    " << precType << " Lstar = " << precType << "(116) * __cspace_f( XYZ.y / XYZn.y ) - " << precType << "(16);\n"
-		"    " << precType << " ustar = " << precType << "(13) * Lstar * ( __cspace_uprime( XYZ ) - __cspace_uprime( XYZn ) );\n"
-		"    " << precType << " vstar = " << precType << "(13) * Lstar * ( __cspace_vprime( XYZ ) - __cspace_vprime( XYZn ) );\n"
-		"    return " << precVec3 << "( Lstar, ustar, vstar );\n"
+		"    ctl_number_t Lstar = ctl_number_t(116) * __cspace_f( XYZ.y / XYZn.y ) - ctl_number_t(16);\n"
+		"    ctl_number_t ustar = ctl_number_t(13) * Lstar * ( __cspace_uprime( XYZ ) - __cspace_uprime( XYZn ) );\n"
+		"    ctl_number_t vstar = ctl_number_t(13) * Lstar * ( __cspace_vprime( XYZ ) - __cspace_vprime( XYZn ) );\n"
+		"    return ctl_vec3f_t( Lstar, ustar, vstar );\n"
 		"}\n"
-		"static inline " << precVec3 << " LuvtoXYZ( const " << precVec3 << " &Luv, const " << precVec3 << " &XYZn )\n"
+		"static inline ctl_vec3f_t LuvtoXYZ( const ctl_vec3f_t &Luv, const ctl_vec3f_t &XYZn )\n"
 		"{\n"
-		"    " << precType << " Lstar = Luv.x;\n"
-		"    " << precType << " ustar = Luv.y;\n"
-		"    " << precType << " vstar = Luv.z;\n"
-		"    " << precType << " unprime = __cspace_uprime( XYZn );\n"
-		"    " << precType << " vnprime = __cspace_vprime( XYZn );\n"
-		"    " << precType << " fY = (Lstar + " << precType << "(16)) / " << precType << "(116);\n"
-		"    " << precType << " Y = XYZn.y * __cspace_fInverse( fY );\n"
-		"    " << precType << " d = " << precType << "(4) * (" << precType << "(13) * Lstar * vnprime + vstar);\n"
-		"    " << precType << " X = " << precType << "(9) * (" << precType << "(13) * Lstar * unprime + ustar) * Y / d;\n"
-		"    " << precType << " Z = -( " << precType << "(3) * ustar + " << precType << "(13) * Lstar * ( " << precType << "(-12) + " << precType << "(3) * unprime + " << precType << "(20) * vnprime ) + " << precType << "(20) * vstar ) * Y / d;\n"
-		"    return " << precVec3 << "( X, Y, Z );\n"
+		"    ctl_number_t Lstar = Luv.x;\n"
+		"    ctl_number_t ustar = Luv.y;\n"
+		"    ctl_number_t vstar = Luv.z;\n"
+		"    ctl_number_t unprime = __cspace_uprime( XYZn );\n"
+		"    ctl_number_t vnprime = __cspace_vprime( XYZn );\n"
+		"    ctl_number_t fY = (Lstar + ctl_number_t(16)) / ctl_number_t(116);\n"
+		"    ctl_number_t Y = XYZn.y * __cspace_fInverse( fY );\n"
+		"    ctl_number_t d = ctl_number_t(4) * (ctl_number_t(13) * Lstar * vnprime + vstar);\n"
+		"    ctl_number_t X = ctl_number_t(9) * (ctl_number_t(13) * Lstar * unprime + ustar) * Y / d;\n"
+		"    ctl_number_t Z = -( ctl_number_t(3) * ustar + ctl_number_t(13) * Lstar * ( ctl_number_t(-12) + ctl_number_t(3) * unprime + ctl_number_t(20) * vnprime ) + ctl_number_t(20) * vstar ) * Y / d;\n"
+		"    return ctl_vec3f_t( X, Y, Z );\n"
 		"}\n"
-		"static inline " << precVec3 << " XYZtoLab( const " << precVec3 << " &XYZ, const " << precVec3 << " &XYZn )\n"
+		"static inline ctl_vec3f_t XYZtoLab( const ctl_vec3f_t &XYZ, const ctl_vec3f_t &XYZn )\n"
 		"{\n"
-		"    " << precType << " tmpY = __cspace_f( XYZ.y / XYZn.y );\n"
-		"    " << precType << " Lstar = " << precType << "(116) * tmpY - " << precType << "(16);\n"
-		"    " << precType << " astar = " << precType << "(500) * ( __cspace_f( XYZ.x / XYZn.x ) -  tmpY );\n"
-		"    " << precType << " bstar = " << precType << "(200) * ( tmpY - __cspace_f( XYZ.z / XYZn.z ) );\n"
-		"    return " << precVec3 << "( Lstar, astar, bstar );\n"
+		"    ctl_number_t tmpY = __cspace_f( XYZ.y / XYZn.y );\n"
+		"    ctl_number_t Lstar = ctl_number_t(116) * tmpY - ctl_number_t(16);\n"
+		"    ctl_number_t astar = ctl_number_t(500) * ( __cspace_f( XYZ.x / XYZn.x ) -  tmpY );\n"
+		"    ctl_number_t bstar = ctl_number_t(200) * ( tmpY - __cspace_f( XYZ.z / XYZn.z ) );\n"
+		"    return ctl_vec3f_t( Lstar, astar, bstar );\n"
 		"}\n"
-		"static inline " << precVec3 << " LabtoXYZ( const " << precVec3 << " &Lab, const " << precVec3 << " &XYZn )\n"
+		"static inline ctl_vec3f_t LabtoXYZ( const ctl_vec3f_t &Lab, const ctl_vec3f_t &XYZn )\n"
 		"{\n"
-		"    " << precType << " Lstar = Lab.x;\n"
-		"    " << precType << " astar = Lab.y;\n"
-		"    " << precType << " bstar = Lab.z;\n"
-		"    " << precType << " fY = (Lstar + " << precType << "(16)) / " << precType << "(116);\n"
-		"    " << precType << " fX = astar / " << precType << "(500) + fY;\n"
-		"    " << precType << " fZ = fY - bstar / " << precType << "(200);\n"
-		"    " << precType << " X = XYZn.x * __cspace_fInverse( fX );\n"
-		"    " << precType << " Y = XYZn.y * __cspace_fInverse( fY );\n"
-		"    " << precType << " Z = XYZn.z * __cspace_fInverse( fZ );\n"
-		"    return " << precVec3 << "( X, Y, Z );\n"
+		"    ctl_number_t Lstar = Lab.x;\n"
+		"    ctl_number_t astar = Lab.y;\n"
+		"    ctl_number_t bstar = Lab.z;\n"
+		"    ctl_number_t fY = (Lstar + ctl_number_t(16)) / ctl_number_t(116);\n"
+		"    ctl_number_t fX = astar / ctl_number_t(500) + fY;\n"
+		"    ctl_number_t fZ = fY - bstar / ctl_number_t(200);\n"
+		"    ctl_number_t X = XYZn.x * __cspace_fInverse( fX );\n"
+		"    ctl_number_t Y = XYZn.y * __cspace_fInverse( fY );\n"
+		"    ctl_number_t Z = XYZn.z * __cspace_fInverse( fZ );\n"
+		"    return ctl_vec3f_t( X, Y, Z );\n"
 		"}\n"
 		"\n"
-		"static inline " << precType << " lookup1D( " << precType << " table[], int size, " << precType << " pMin, " << precType << " pMax, " << precType << " p )\n"
+		"static inline ctl_number_t lookup1D( ctl_number_t table[], int size, ctl_number_t pMin, ctl_number_t pMax, ctl_number_t p )\n"
 		"{\n"
 		"    int iMax = size - 1;\n"
-		"    " << precType << " r = ( clamp( p, pMin, pMax ) - pMin ) / ( pMax - pMin ) * iMax;\n"
+		"    ctl_number_t r = ( clamp( p, pMin, pMax ) - pMin ) / ( pMax - pMin ) * iMax;\n"
 		"    int i = static_cast<int>( r );\n"
-		"    " << precType << " u = r - static_cast<" << precType << ">( i );\n"
-		"    " << precType << " t0 = table[i];\n"
-		"    " << precType << " t1 = table[std::min( i + 1, iMax )];\n"
+		"    ctl_number_t u = r - static_cast<ctl_number_t>( i );\n"
+		"    ctl_number_t t0 = table[i];\n"
+		"    ctl_number_t t1 = table[std::min( i + 1, iMax )];\n"
 		"    return t0 + u * ( t1 - t0 );\n"
+		"}\n"
+		"\n"
+		"static inline ctl_number_t lookupCubic1D( ctl_number_t table[], int size, ctl_number_t pMin, ctl_number_t pMax, ctl_number_t p )\n"
+		"{\n"
+		"    if ( size < 3 ) return lookup1D( table, size, pMin, pMax, p );\n"
+		"    int iMax = size - 1;\n"
+		"    ctl_number_t r = ( clamp( p, pMin, pMax ) - pMin ) / ( pMax - pMin ) * iMax;\n"
+		"    if ( r >= iMax ) return table[iMax];\n"
+		"    int i = static_cast<int>( r );\n"
+		"    const ctl_number_t kHalf = ctl_number_t(0.5);\n"
+		"    const ctl_number_t kOne = ctl_number_t(1);\n"
+		"    const ctl_number_t kTwo = ctl_number_t(2);\n"
+		"    const ctl_number_t kThree = ctl_number_t(3);\n"
+		"    ctl_number_t dy = ( table[i+1] - table[i] );\n"
+		"    ctl_number_t m0, m1;\n"
+		"    if ( i < (iMax - 1) )\n"
+		"    {\n"
+		"        m1 = ( dy + ( table[i+2] - table[i+1] ) ) * kHalf;\n"
+		"        if ( i > 0 )\n"
+		"            m0 = ( dy + ( table[i] - table[i-1] ) ) * kHalf;\n"
+		"        else\n"
+		"            m0 = ( kThree * dy - m1 ) * kHalf;\n"
+		"    }\n"
+		"    else\n"
+		"    {\n"
+		"        m0 = ( dy + ( table[i] - table[i-1] ) ) * kHalf;\n"
+		"        m1 = ( kThree * dy - m0 ) * kHalf;\n"
+		"    }\n"
+		"    ctl_number_t t = r - static_cast<ctl_number_t>( i );\n"
+		"    ctl_number_t t2 = t * t;\n"
+		"    ctl_number_t t3 = t2 * t;\n"
+		"    return ( table[i] * (kTwo * t3 - kThree * t2 + kOne) +\n"
+		"             m0 * ( t3 - kTwo * t2 + t ) +\n"
+		"             table[i+1] * ( kThree * t2 - kTwo * t3 ) +\n"
+		"             m1 * ( t3 - t2 ) );\n"
+		"}\n"
+		"\n"
+		"static inline ctl_vec3f_t lookup3D( const ctl_vec3f_t table[], const ctl_vec3i_t &size, const ctl_vec3f_t &pMin, const ctl_vec3f_t &pMax, const ctl_vec3f_t &p )\n"
+		"{\n"
+		"    int iMax = size.x - 1;\n"
+		"    ctl_number_t r = ( clamp( p.x, pMin.x, pMax.x ) - pMin.x ) / ( pMax.x - pMin.x ) * iMax;\n"
+		"    int jMax = size.y - 1;\n"
+		"    ctl_number_t s = ( clamp( p.y, pMin.y, pMax.y ) - pMin.y ) / ( pMax.y - pMin.y ) * jMax;\n"
+		"    int kMax = size.z - 1;\n"
+		"    ctl_number_t t = ( clamp( p.z, pMin.z, pMax.z ) - pMin.z ) / ( pMax.z - pMin.z ) * iMax;\n"
+		"    int i = static_cast<int>( r );\n"
+		"    int i1 = std::min( i + 1, iMax );\n"
+		"    ctl_number_t u = r - static_cast<ctl_number_t>( i );\n"
+		"    ctl_number_t u1 = ctl_number_t(1) - u;\n"
+		"    int j = static_cast<int>( s );\n"
+		"    int j1 = std::min( j + 1, jMax );\n"
+		"    ctl_number_t v = s - static_cast<ctl_number_t>( j );\n"
+		"    ctl_number_t v1 = ctl_number_t(1) - v;\n"
+		"    int k = static_cast<int>( t );\n"
+		"    int k1 = std::min( k + 1, kMax );\n"
+		"    ctl_number_t w = t - static_cast<ctl_number_t>( k );\n"
+		"    ctl_number_t w1 = ctl_number_t(1) - w;\n"
+		"    const ctl_vec3f_t &a = table[( i * size.y + j ) * size.z + k];\n"
+		"    const ctl_vec3f_t &b = table[( i1 * size.y + j ) * size.z + k];\n"
+		"    const ctl_vec3f_t &c = table[( i * size.y + j1 ) * size.z + k];\n"
+		"    const ctl_vec3f_t &d = table[( i1 * size.y + j1 ) * size.z + k];\n"
+		"    const ctl_vec3f_t &e = table[( i * size.y + j ) * size.z + k1];\n"
+		"    const ctl_vec3f_t &f = table[( i1 * size.y + j ) * size.z + k1];\n"
+		"    const ctl_vec3f_t &g = table[( i * size.y + j1 ) * size.z + k1];\n"
+		"    const ctl_vec3f_t &h = table[( i1 * size.y + j1 ) * size.z + k1];\n"
+		"    return ( w1 * ( v1 * ( u1 * a + u * b ) + v * ( u1 * c + u * d ) ) +\n"
+		"             w * ( v1 * ( u1 * e + u * f ) + v * ( u1 * g + u * h ) ) );\n"
+		"}\n"
+		"\n"
+		"static inline ctl_number_t interpolate1D( const ctl_number_t table[][2], int size, ctl_number_t p )\n"
+		"{\n"
+		"    if ( size < 1 ) return ctl_number_t(0);\n"
+		"    if ( p < table[0][0] ) return table[0][1];\n"
+		"    if ( p >= table[size - 1][0] ) return table[size - 1][1];\n"
+		"    int i = 0;\n"
+		"    int j = size;\n"
+		"    while ( i < j - 1 )\n"
+		"    {\n"
+		"        int k = ( i + j ) / 2;\n"
+		"        if ( table[k][0] == p ) return table[k][1];\n"
+		"        else if ( table[k][0] < p ) i = k;\n"
+		"        else j = k;\n"
+		"    }\n"
+		"    ctl_number_t t = ( p - table[i][0] ) / ( table[i + 1][0] - table[i][0] );\n"
+		"    ctl_number_t x = table[i][1];\n"
+		"    return x + t * ( table[i + 1][1] - x );\n"
+		"}\n"
+		"\n"
+		"static inline ctl_number_t interpolateCubic1D( const ctl_number_t table[][2], int size, ctl_number_t p )\n"
+		"{\n"
+		"    if ( size < 3 ) return interpolate1D( table, size, p );\n"
+		"    if ( p < table[0][0] ) return table[0][1];\n"
+		"    if ( p >= table[size - 1][0] ) return table[size - 1][1];\n"
+		"    int i = 0;\n"
+		"    int j = size;\n"
+		"    while ( i < j - 1 )\n"
+		"    {\n"
+		"        int k = ( i + j ) / 2;\n"
+		"        if ( table[k][0] == p ) return table[k][1];\n"
+		"        else if ( table[k][0] < p ) i = k;\n"
+		"        else j = k;\n"
+		"    }\n"
+		"    const ctl_number_t kHalf = ctl_number_t(0.5);\n"
+		"    const ctl_number_t kOne = ctl_number_t(1);\n"
+		"    const ctl_number_t kTwo = ctl_number_t(2);\n"
+		"    const ctl_number_t kThree = ctl_number_t(3);\n"
+		"    ctl_number_t dx = ( table[i+1][0] - table[i][0] );\n"
+		"    ctl_number_t dy = ( table[i+1][1] - table[i][1] );\n"
+		"    ctl_number_t m0, m1;\n"
+		"    if ( i > 0 ) m0 = kHalf * ( dy + dx * ( table[i][1] - table[i-1][1] ) / (table[i][0] - table[i-1][0]) );\n"
+		"    if ( i < (size - 2) ) m1 = kHalf * ( dy + dx * (table[i+2][1] - table[i+1][1]) / (table[i+2][0] - table[i+1][0]) );\n"
+		"    if ( i <= 0 ) m0 = kHalf * ( kThree * dy - m1 );\n"
+		"    if ( i >= (size - 2) ) m1 = kHalf * ( kThree * dy - m0 );\n"
+		"    ctl_number_t t = ( p - table[i][0] ) / dx;\n"
+		"    ctl_number_t t2 = t * t;\n"
+		"    ctl_number_t t3 = t2 * t;\n"
+		"    return ( table[i][1] * (kTwo * t3 - kThree * t2 + kOne) +\n"
+		"             m0 * ( t3 - kTwo * t2 + t ) +\n"
+		"             table[i+1][1] * ( kThree * t2 - kTwo * t3 ) +\n"
+		"             m1 * ( t3 - t2 ) );\n"
 		"}\n"
 		"} // namespace _ctlcc_\n\n";
 
@@ -386,7 +508,6 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 	--myDoForwardDecl;
 	newlineAndIndent();
 
-	std::cout << "Generating consts..." << std::endl;
 	StatementNodePtr consts = m.constants;
 	while ( consts )
 	{
@@ -398,7 +519,6 @@ CPPGenerator::module( CodeLContext &ctxt, const CodeModuleNode &m )
 		newlineAndIndent();
 	--myInModuleInit;
 
-	std::cout << "Generating module init..." << std::endl;
 	if ( ! myCurModuleInit.back().empty() )
 	{
 		const std::vector<std::string> &initVals = myCurModuleInit.back();
@@ -491,8 +611,8 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 					  parm.access == RWA_READ, true,
 					  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
 
-			if ( needsSizeArgument( parm.type ) )
-				curStream() << ", int " << parm.name << "_size";
+			SizeVector sizes;
+			checkNeedsSizeArgument( parm.type, parm.name, sizes );
 		}
 		curStream() << " );";
 		popStream();
@@ -518,8 +638,8 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 					  parm.access == RWA_READ, true,
 					  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
 
-			if ( needsSizeArgument( parm.type ) )
-				curStream() << ", int " << parm.name << "_size";
+			SizeVector sizes;
+			checkNeedsSizeArgument( parm.type, parm.name, sizes );
 		}
 		curStream() << " );";
 		return;
@@ -529,7 +649,7 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 	if ( ! isMain )
 	{
 		curStream() << "static ";
-	
+
 		if ( myFuncsUsedInInit.find( f.name ) == myFuncsUsedInInit.end() )
 			curStream() << "inline ";
 	}
@@ -552,8 +672,8 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 				  parm.access == RWA_READ, true,
 				  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
 
-		if ( needsSizeArgument( parm.type ) )
-			curStream() << ", int " << parm.name << "_size";
+		SizeVector sizes;
+		checkNeedsSizeArgument( parm.type, parm.name, sizes );
 	}
 	curStream() << " )";
 	pushBlock();
@@ -612,7 +732,7 @@ CPPGenerator::variable( CodeLContext &ctxt, const CodeVariableNode &v )
 		if ( v.name.find( '$' ) != std::string::npos )
 		{
 			varDecl = v.name;
-			
+
 			std::string initVal;
 			if ( v.initialValue )
 			{
@@ -1007,11 +1127,9 @@ CPPGenerator::call( CodeLContext &ctxt, const CodeCallNode &v )
 				curStream() << ", ";
 
 			parameters[i].type->generateCastFrom( v.arguments[i], ctxt );
-			if ( needsSizeArgument( parameters[i].type ) )
-			{
-				curStream() << ", ";
-				extractSizeAndAdd( v.arguments[i], ctxt );
-			}
+			SizeVector sizes;
+			if ( checkNeedsSizeArgument( parameters[i].type, std::string(), sizes ) )
+				extractSizeAndAdd( v.arguments[i], sizes, ctxt );
 		}
 		for ( size_t N = parameters.size(); i < N; ++i )
 		{
@@ -1047,6 +1165,13 @@ CPPGenerator::call( CodeLContext &ctxt, const CodeCallNode &v )
 				curStream() << namesp << found->second;
 			else
 				curStream() << defVal;
+
+			SizeVector sizes;
+			if ( checkNeedsSizeArgument( parm.type, std::string(), sizes ) )
+			{
+				curStream() << ", ";
+				extractSizeAndAdd( parm.defaultValue, sizes, ctxt );
+			}
 		}
 		curStream() << " )";
 	}
@@ -1112,7 +1237,7 @@ CPPGenerator::startToHalf( void )
 void
 CPPGenerator::startToFloat( void )
 {
-	curStream() << "static_cast<" + getPrecisionType() + ">( ";
+	curStream() << "static_cast<ctl_number_t>( ";
 }
 
 
@@ -1144,7 +1269,7 @@ CPPGenerator::emitToken( Token t )
 
 		case TK_LEFTSHIFT: curStream() << "<<"; break;
 		case TK_RIGHTSHIFT: curStream() << "<<"; break;
-			
+
 		case TK_DIV: curStream() << "/"; break;
 		case TK_MINUS: curStream() << "-"; break;
 		case TK_MOD: curStream() << "%"; break;
@@ -1181,7 +1306,7 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 			newlineAndIndent();
 			curStream() << '{';
 		}
-		
+
 
 		size_t N = arrayType->size();
 		bool lineEveryItem = ( N > 4 );
@@ -1263,7 +1388,7 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 			}
 		}
 		popIndent();
-		
+
 		if ( myCurInitType == ASSIGN )
 		{
 			if ( lineEveryItem )
@@ -1286,7 +1411,7 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 
 		if ( myCurInitType == FUNC )
 		{
-			for( MemberVectorConstIterator it = structType->members().begin();
+			for ( MemberVectorConstIterator it = structType->members().begin();
 				 it != structType->members().end();
 				 ++it )
 			{
@@ -1300,7 +1425,7 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 		else
 		{
 			pushIndent();
-			for( MemberVectorConstIterator it = structType->members().begin();
+			for ( MemberVectorConstIterator it = structType->members().begin();
 				 it != structType->members().end();
 				 ++it )
 			{
@@ -1370,7 +1495,7 @@ CPPGenerator::variable( CodeLContext &ctxt,
 		case FloatTypeEnum:
 			if ( isConst )
 				curStream() << "const ";
-			curStream() << getPrecisionType();
+			curStream() << "ctl_number_t";
 			break;
 		case StringTypeEnum:
 			if ( isConst )
@@ -1548,15 +1673,13 @@ CPPGenerator::findBuiltinType( std::string &typeName,
 		{
 			switch ( sx )
 			{
-				case 2:
-				case 3:
-				case 4:
-					typeName = getVectorType( sx );
-					break;
+				case 2: typeName = "ctl_vec2f_t"; break;
+				case 3: typeName = "ctl_vec3f_t"; break;
+				case 4: typeName = "ctl_vec4f_t"; break;
 				default:
 				{
 					// just do a C array of the low level type
-					typeName = getPrecisionType();
+					typeName = "ctl_number_t";
 					std::stringstream pB;
 					pB << '[' << sx << ']';
 					postDecl = pB.str();
@@ -1572,9 +1695,9 @@ CPPGenerator::findBuiltinType( std::string &typeName,
 		 sx == subArray->size() )
 	{
 		if ( sx == 3 )
-			typeName = getMatrixType( 3 );
+			typeName = "ctl_mat33f_t";
 		else if ( sx == 4 )
-			typeName = getMatrixType( 4 );
+			typeName = "ctl_mat44f_t";
 
 		return ! typeName.empty();
 	}
@@ -1590,13 +1713,13 @@ CPPGenerator::findBuiltinType( std::string &typeName,
 			switch ( sx )
 			{
 				case 2:
-					typeName = NAMESPACE(IMATH_NAMESPACE, "V2i");
+					typeName = "ctl_vec2i_t";
 					break;
 				case 3:
-					typeName = NAMESPACE(IMATH_NAMESPACE, "V3i");
+					typeName = "ctl_vec3i_t";
 					break;
 				case 4:
-					typeName = NAMESPACE(IMATH_NAMESPACE, "V4i");
+					typeName = "ctl_vec4i_t";
 					break;
 				default:
 				{
@@ -1632,7 +1755,7 @@ CPPGenerator::canBeBuiltinType( const ArrayType *arrayType )
 			return true;
 		return false;
 	}
-	
+
 	ArrayType *subArray = dynamic_cast<ArrayType *>( arrayType->elementType().pointer() );
 	if ( subArray && dynamic_cast<FloatType *>( subArray->elementType().pointer() ) &&
 		 arrayType->size() == subArray->size() )
@@ -1877,9 +2000,43 @@ CPPGenerator::extractLiteralConstants( const StatementNodePtr &consts,
 
 
 bool
-CPPGenerator::needsSizeArgument( const DataTypePtr &p )
+CPPGenerator::checkNeedsSizeArgument( const DataTypePtr &p, const std::string &name, SizeVector &sizes )
 {
-	return false;
+	sizes.clear();
+	int cnt = 0;
+	if ( p->cDataType() == ArrayTypeEnum )
+	{
+		const ArrayType *arrT = dynamic_cast<const ArrayType *>( p.pointer() );
+		arrT->sizes( sizes );
+		for ( size_t i = 0, N = sizes.size(); i != N; ++i )
+		{
+			if ( sizes[i] == 0 )
+				++cnt;
+		}
+	}
+
+	if ( name.empty() )
+		return cnt > 0;
+
+	switch ( cnt )
+	{
+		case 0:
+			break;
+		case 1:
+			curStream() << ", int " << name << "_size";
+			break;
+		case 2:
+			curStream() << ", const ctl_vec2i_t &" << name << "_size";
+			break;
+		case 3:
+			curStream() << ", const ctl_vec3i_t &" << name << "_size";
+			break;
+		default:
+			throw std::logic_error( "Unimplemented size of variable array passing" );
+			break;
+	}
+	
+	return cnt > 0;
 }
 
 
@@ -1887,8 +2044,52 @@ CPPGenerator::needsSizeArgument( const DataTypePtr &p )
 
 
 void
-CPPGenerator::extractSizeAndAdd( const ExprNodePtr &p, CodeLContext &ctxt )
+CPPGenerator::extractSizeAndAdd( const ExprNodePtr &p, SizeVector &func_sizes, CodeLContext &ctxt )
 {
+	if ( p->type->cDataType() == ArrayTypeEnum )
+	{
+		const ArrayType *arrT = dynamic_cast<const ArrayType *>( p->type.pointer() );
+		SizeVector arg_sizes;
+		arrT->sizes( arg_sizes );
+		if ( arg_sizes.size() == func_sizes.size() )
+		{
+			int cnt = 0;
+			SizeVector outSizes;
+			for ( size_t i = 0, N = func_sizes.size(); i != N; ++i )
+			{
+				if ( func_sizes[i] == 0 )
+				{
+					++cnt;
+					if ( arg_sizes[i] == 0 )
+						throw std::logic_error( "Unknown argument size" );
+					outSizes.push_back( arg_sizes[i] );
+				}
+			}
+			switch ( cnt )
+			{
+				case 0: throw std::logic_error( "Unhandled missing array size" );
+				case 1: curStream() << ", static_cast<int>( "; break;
+				case 2: curStream() << ", ctl_vec2i_t( "; break;
+				case 3: curStream() << ", ctl_vec3i_t( "; break;
+				default: throw std::logic_error( "Unimplemented size of variable array passing" );
+			}
+			for ( size_t i = 0, N = outSizes.size(); i != N; ++i )
+			{
+				if ( i > 0 )
+					curStream() << ", ";
+				curStream() << outSizes[i];
+			}
+			curStream() << " )";
+		}
+		else
+		{
+			throw std::logic_error( "Unhandled differing array sizes" );
+		}
+	}
+	else
+	{
+		throw std::logic_error( "Unhandled array type coersion" );
+	}
 }
 
 } // namespace Ctl
