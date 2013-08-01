@@ -121,8 +121,8 @@ static void
 splitAndAdd( std::vector<std::string> &retval, const std::string &x, char sep,
 			 const std::string &prefix, const std::string &removePrefix = std::string() )
 {
-	typename std::string::size_type last = x.find_first_not_of( sep, 0 );
-	typename std::string::size_type cur = x.find_first_of( sep, last );
+	std::string::size_type last = x.find_first_not_of( sep, 0 );
+	std::string::size_type cur = x.find_first_of( sep, last );
 		
 	while ( cur != std::string::npos || last < x.size() )
 	{
