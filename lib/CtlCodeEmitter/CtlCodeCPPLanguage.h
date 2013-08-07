@@ -124,11 +124,6 @@ protected:
 	void doInit( InitType initT, CodeLContext &ctxt,
 				 const ExprNodePtr &initV, const std::string &varName );
 	void replaceInit( std::string &initS, const std::string &name );
-	bool findBuiltinType( std::string &name,
-						  std::string &postDecl,
-						  const ArrayTypePtr &array,
-						  CodeLContext &ctxt );
-	bool canBeBuiltinType( const ArrayType *array );
 
 	bool checkNeedInitInModuleInit( const ExprNodePtr &initV, bool deep = false );
 	bool isAllLiterals( const ExprNodePtr &v );
@@ -138,8 +133,14 @@ protected:
 	void extractLiteralConstants( const StatementNodePtr &consts,
 								  CodeLContext &ctxt );
 
-	bool checkNeedsSizeArgument( const DataTypePtr &p, const std::string &base_name, SizeVector &sizes );
-	void extractSizeAndAdd( const ExprNodePtr &p, SizeVector &sizes, CodeLContext &ctxt );
+	bool checkNeedsSizeArgument( const DataTypePtr &p, const std::string &base_name );
+	void extractSizeAndAdd( const ExprNodePtr &p, const DataTypePtr &funcParm, CodeLContext &ctxt );
+	typedef std::pair<std::vector<int>, std::string> ArrayInfo;
+	// NB: The RcPtr type doesn't work for an array container, guess
+	// it doesn't implement the less than operator in a std::container
+	// kind of way, so we use the bare pointer...
+	typedef std::map<const ArrayType *, ArrayInfo> ArrayInfoContainer;
+	const ArrayInfo &collapseArray( const ArrayType *arrPtr );
 
 	bool myCPP11Mode;
 	std::stringstream myCodeStream;
@@ -153,6 +154,7 @@ protected:
 	std::map<std::string, std::string> myGlobalLiterals;
 	std::map<std::string, std::string> myDefaultMappings;
 	std::vector< std::vector<std::string> > myCurModuleInit;
+	ArrayInfoContainer myArrayTypes;
 	// functions that can't be inline...
 	std::set<std::string> myFuncsUsedInInit;
 	std::set<std::string> myGlobalVariables;

@@ -56,6 +56,8 @@
 #include <deque>
 #include <ctype.h>
 #include <stdexcept>
+#include <cstdlib>
+#include <algorithm>
 
 namespace Ctl
 {
@@ -301,6 +303,12 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"    return t0 + u * ( t1 - t0 );\n"
 		"}\n"
 		"\n"
+		"template <typename T>\n"
+		"static inline ctl_number_t lookup1D( const T &x, int size, ctl_number_t pMin, ctl_number_t pMax, ctl_number_t p )\n"
+		"{\n"
+		"    return lookup1D( &x[0], size, pMin, pMax, p );\n"
+		"}\n"
+		"\n"
 		"static inline ctl_number_t lookupCubic1D( ctl_number_t table[], int size, ctl_number_t pMin, ctl_number_t pMax, ctl_number_t p )\n"
 		"{\n"
 		"    if ( size < 3 ) return lookup1D( table, size, pMin, pMax, p );\n"
@@ -336,7 +344,13 @@ CPPGenerator::stdLibraryAndSetup( void )
 		"             m1 * ( t3 - t2 ) );\n"
 		"}\n"
 		"\n"
-		"static inline ctl_vec3f_t lookup3D( const ctl_vec3f_t table[], const ctl_vec3i_t &size, const ctl_vec3f_t &pMin, const ctl_vec3f_t &pMax, const ctl_vec3f_t &p )\n"
+		"template <typename T>\n"
+		"static inline ctl_number_t lookupCubic1D( const T &x, int size, ctl_number_t pMin, ctl_number_t pMax, ctl_number_t p )\n"
+		"{\n"
+		"    return lookupCubic1D( &x[0], size, pMin, pMax, p );\n"
+		"}\n"
+		"\n"
+		"static inline ctl_vec3f_t lookup3D_f( const ctl_vec3f_t table[], const ctl_vec3i_t &size, const ctl_vec3f_t &pMin, const ctl_vec3f_t &pMax, const ctl_vec3f_t &p )\n"
 		"{\n"
 		"    int iMax = size.x - 1;\n"
 		"    ctl_number_t r = ( clamp( p.x, pMin.x, pMax.x ) - pMin.x ) / ( pMax.x - pMin.x ) * iMax;\n"
@@ -611,8 +625,7 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 					  parm.access == RWA_READ, true,
 					  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
 
-			SizeVector sizes;
-			checkNeedsSizeArgument( parm.type, parm.name, sizes );
+			checkNeedsSizeArgument( parm.type, parm.name );
 		}
 		curStream() << " );";
 		popStream();
@@ -638,8 +651,7 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 					  parm.access == RWA_READ, true,
 					  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
 
-			SizeVector sizes;
-			checkNeedsSizeArgument( parm.type, parm.name, sizes );
+			checkNeedsSizeArgument( parm.type, parm.name );
 		}
 		curStream() << " );";
 		return;
@@ -672,8 +684,7 @@ CPPGenerator::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 				  parm.access == RWA_READ, true,
 				  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
 
-		SizeVector sizes;
-		checkNeedsSizeArgument( parm.type, parm.name, sizes );
+		checkNeedsSizeArgument( parm.type, parm.name );
 	}
 	curStream() << " )";
 	pushBlock();
@@ -950,9 +961,71 @@ CPPGenerator::unaryOp( CodeLContext &ctxt, const CodeUnaryOpNode &v )
 void
 CPPGenerator::index( CodeLContext &ctxt, const CodeArrayIndexNode &v )
 {
-	v.array->generateCode( ctxt );
 	IntTypePtr intType = ctxt.newIntType();
+
+	ExprNodePtr root;
+	ArrayIndexNode *parentArray = dynamic_cast<ArrayIndexNode *>( v.array.pointer() );
+	std::vector<std::string> parSubs;
+	while ( parentArray )
+	{
+		std::stringstream tmpbuf;
+		pushStream( tmpbuf );
+		intType->generateCastFrom( parentArray->index, ctxt );
+		popStream();
+		ArrayIndexNode *nextPar = dynamic_cast<ArrayIndexNode *>( parentArray->array.pointer() );
+		parSubs.push_back( tmpbuf.str() );
+
+		if ( ! nextPar )
+			root = parentArray->array;
+		parentArray = nextPar;
+	}
+	if ( ! root )
+		root = v.array;
+
+	const ArrayInfo &arrInfo = collapseArray( dynamic_cast<ArrayType *>( root->type.pointer() ) );
+
+	root->generateCode( ctxt );
 	curStream() << '[';
+	bool needAdd = false;
+	if ( ! parSubs.empty() )
+	{
+		std::reverse( parSubs.begin(), parSubs.end() );
+		const std::vector<int> &arr_sizes = arrInfo.first;
+		if ( parSubs.size() != ( arr_sizes.size() - 1 ) )
+			throw std::logic_error( "Invalid set of array subscripts" );
+
+		for ( size_t pI = 0; pI != parSubs.size(); ++pI )
+		{
+			if ( arr_sizes[pI] < 0 )
+			{
+				curStream() << parSubs[pI] << "][";
+				continue;
+			}
+
+			size_t nUnder = 1;
+			for ( size_t x = pI + 1; x < arr_sizes.size(); ++x )
+			{
+				if ( arr_sizes[x] < 0 )
+					break;
+
+				nUnder *= arr_sizes[x];
+			}
+			
+			if ( needAdd )
+				curStream() << " + ";
+
+			curStream() << "(" << parSubs[pI] << ") * " << nUnder;
+			if ( arr_sizes[pI + 1] < 0 )
+			{
+				curStream() << "][";
+				needAdd = false;
+			}
+			else
+				needAdd = true;
+		}
+	}
+	if ( needAdd )
+		curStream() << " + ";
 	intType->generateCastFrom( v.index, ctxt );
 	curStream() << ']';
 }
@@ -1127,9 +1200,8 @@ CPPGenerator::call( CodeLContext &ctxt, const CodeCallNode &v )
 				curStream() << ", ";
 
 			parameters[i].type->generateCastFrom( v.arguments[i], ctxt );
-			SizeVector sizes;
-			if ( checkNeedsSizeArgument( parameters[i].type, std::string(), sizes ) )
-				extractSizeAndAdd( v.arguments[i], sizes, ctxt );
+			if ( checkNeedsSizeArgument( parameters[i].type, std::string() ) )
+				extractSizeAndAdd( v.arguments[i], parameters[i].type, ctxt );
 		}
 		for ( size_t N = parameters.size(); i < N; ++i )
 		{
@@ -1166,11 +1238,10 @@ CPPGenerator::call( CodeLContext &ctxt, const CodeCallNode &v )
 			else
 				curStream() << defVal;
 
-			SizeVector sizes;
-			if ( checkNeedsSizeArgument( parm.type, std::string(), sizes ) )
+			if ( checkNeedsSizeArgument( parm.type, std::string() ) )
 			{
 				curStream() << ", ";
-				extractSizeAndAdd( parm.defaultValue, sizes, ctxt );
+				extractSizeAndAdd( parm.defaultValue, parm.type, ctxt );
 			}
 		}
 		curStream() << " )";
@@ -1301,103 +1372,129 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 	ArrayType *arrayType = dynamic_cast<ArrayType *>( t.pointer() );
 	if ( arrayType )
 	{
-		if ( myCurInitType == ASSIGN )
+		const ArrayInfo &arrInfo = collapseArray( arrayType );
+		const std::vector<int> &arr_sizes = arrInfo.first;
+		const DataTypePtr &coreType = arrayType->coreType();
+
+		size_t nSubScripts = arr_sizes.size();
+		size_t nItems = 1;
+		size_t nPerCollapseChunk = 1;
+		for ( size_t i = 0; i < nSubScripts; ++i )
 		{
-			newlineAndIndent();
-			curStream() << '{';
+			if ( arr_sizes[i] == 0 )
+				throw std::logic_error( "Attempt to initialize unknown array size" );
+
+			if ( arr_sizes[i] > 0 )
+				nItems *= abs( arr_sizes[i] );
+			else
+				nPerCollapseChunk *= abs( arr_sizes[i] );
 		}
 
+		bool doCtor = myCurInitType != CTOR;
+		if ( arrInfo.second == "int" || arrInfo.second == "ctl_number_t" )
+			doCtor = false;
 
-		size_t N = arrayType->size();
-		bool lineEveryItem = ( N > 4 );
-
-		pushIndent();
 		if ( myCurInitType == FUNC )
 		{
-			std::string typeName, postDecl;
-//			if ( ! canBeBuiltinType( arrayType ) )
-			bool doCtor = false;
-			if ( ! findBuiltinType( typeName, postDecl, arrayType, ctxt ) )
+			pushIndent();
+			for ( size_t i = 0; i < nItems; ++i )
 			{
 				newlineAndIndent();
-				curStream() << varName << ".resize( " << arrayType->size() << " );";
-			}
-			else
-				doCtor = true;
+				if ( nItems > 1 )
+					curStream() << varName << '[' << i << "] = ";
+				else
+					curStream() << varName << " = ";
 
-			if ( doCtor && isSubItem && postDecl.empty() )
-			{
-				myCurInitType = CTOR;
-				// we're a sub-type, we can treat this as a CTOR scenario
-				curStream() << varName << " = " << typeName << "( ";
-				for (int i = 0; i < arrayType->size(); ++i)
+				if ( doCtor )
+					curStream() << arrInfo.second << "( ";
+
+				for ( size_t x = 0; x < nPerCollapseChunk; ++x, ++index )
 				{
-					if ( i > 0 )
-						curStream() << ',';
-					if ( lineEveryItem )
-						newlineAndIndent();
-					else if ( i > 0 )
-						curStream() << ' ';
-
-					valueRecurse( ctxt, elements, arrayType->elementType(), index, varName, true );
+					if ( x > 0 )
+						curStream() << ", ";
+					coreType->generateCastFrom( elements[index], ctxt );
 				}
-				curStream() << " );";
-				myCurInitType = FUNC;
+				if ( doCtor )
+					curStream() << " );";
 			}
-			else
-			{
-				std::stringstream nameB;
-				nameB << varName << "[" << arrayType->size() << "]";
-				std::string varNameSubscript = nameB.str();
-				std::string::size_type startPos = varNameSubscript.find_last_of( '[' ) + 1;
-				std::string::size_type endPos = varNameSubscript.find_last_of( ']' );
-				for (int i = 0; i < arrayType->size(); ++i)
-				{
-					int curOut = i;
-					bool done = false;
-					for ( std::string::size_type x = endPos - 1; x >= startPos; --x )
-					{
-						if ( done )
-							varNameSubscript[x] = ' ';
-						else
-						{
-							varNameSubscript[x] = '0' + (curOut % 10);
-							curOut /= 10;
-							if ( curOut == 0 )
-								done = true;
-						}
-					}
-
-					newlineAndIndent();
-					valueRecurse( ctxt, elements, arrayType->elementType(), index, varNameSubscript, true );
-				}
-			}
+			popIndent();
 		}
 		else
 		{
-			for (int i = 0; i < arrayType->size(); ++i)
-			{
-				if ( i > 0 )
-					curStream() << ',';
-				if ( lineEveryItem )
-					newlineAndIndent();
-				else if ( i > 0 )
-					curStream() << ' ';
-
-				valueRecurse( ctxt, elements, arrayType->elementType(), index, varName, true );
-			}
-		}
-		popIndent();
-
-		if ( myCurInitType == ASSIGN )
-		{
-			if ( lineEveryItem )
+			bool doBrace = false;
+			if ( myCurInitType == ASSIGN )
 			{
 				newlineAndIndent();
-				curStream() << "}";
+				curStream() << "{ ";
+				if ( nItems > 1 && nPerCollapseChunk > 1 && ! doCtor )
+					doBrace = true;
 			}
-			else
-				curStream() << " }";
+			pushIndent();
+
+			bool lineEveryItem = nItems > 4;
+			for ( size_t i = 0; i < nItems; ++i )
+			{
+				if ( doBrace )
+				{
+					if ( i > 0 )
+						curStream() << ",\n";
+
+					newlineAndIndent();
+					curStream() << "{ ";
+				}
+				else if ( i > 0 )
+				{
+					if ( nPerCollapseChunk == 1 && ! lineEveryItem && i > 0 )
+						curStream() << ", ";
+					else
+						curStream() << ',';
+				}
+				if ( doCtor )
+				{
+					if ( lineEveryItem )
+						newlineAndIndent();
+
+					curStream() << arrInfo.second << "( ";
+					for ( size_t x = 0; x < nPerCollapseChunk; ++x, ++index )
+					{
+						if ( x > 0 )
+							curStream() << ", ";
+					
+						coreType->generateCastFrom( elements[index], ctxt );
+					}
+					curStream() << " )";
+				}
+				else
+				{
+					for ( size_t x = 0; x < nPerCollapseChunk; ++x, ++index )
+					{
+						if ( x > 0 )
+							curStream() << ',';
+
+						if ( lineEveryItem )
+							newlineAndIndent();
+						else if ( x > 0 )
+							curStream() << ' ';
+
+						coreType->generateCastFrom( elements[index], ctxt );
+					}
+				}
+
+				if ( doBrace )
+					curStream() << " }";
+			}
+			popIndent();
+
+			if ( myCurInitType == ASSIGN )
+			{
+				if ( lineEveryItem )
+				{
+					newlineAndIndent();
+					curStream() << "}";
+				}
+				else
+					curStream() << " }";
+			}
 		}
 
 		return;
@@ -1416,9 +1513,6 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 				 ++it )
 			{
 				std::string name = varName + "." + it->name;
-
-				newlineAndIndent();
-
 				valueRecurse( ctxt, elements, it->type, index, name, true );
 			}
 		}
@@ -1446,6 +1540,7 @@ CPPGenerator::valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
 
 	if ( myCurInitType == FUNC )
 	{
+		newlineAndIndent();
 		curStream() << varName << " = ";
 		t->generateCastFrom( elements[index], ctxt );
 		curStream() << ';';
@@ -1519,41 +1614,49 @@ CPPGenerator::variable( CodeLContext &ctxt,
 		}
 		case ArrayTypeEnum:
 		{
-			ArrayTypePtr arrayType = t.cast<ArrayType>();
+			const ArrayInfo &arrInfo = collapseArray( dynamic_cast<ArrayType *>( t.pointer() ) );
 
-			std::string typeName;
+			retval = ASSIGN;
 
-			if ( myCPP11Mode )
-				retval = ASSIGN;
-			else
-				retval = FUNC;
-
-			if ( ! findBuiltinType( typeName, postDecl, arrayType, ctxt ) )
+			std::stringstream postBuf;
+			bool needOpen = true;
+			int mulCnt = 0;
+			for ( size_t i = 0, N = arrInfo.first.size(); i != N; ++i )
 			{
-				std::stringstream x;
+				int sz = arrInfo.first[i];
+				// built-in vec / matrix set size to negative in collapse
+				if ( sz < 0 )
+					break;
 
-				x << "std::vector< ";
-				pushStream( x );
-				variable( ctxt, std::string(), arrayType->elementType(),
-						  false, false, false );
-				popStream();
-				x << " >";
-				typeName = x.str();
+				if ( needOpen )
+				{
+					postBuf << '[';
+					needOpen = false;
+				}
+				if ( sz == 0 )
+				{
+					postBuf << ']';
+					needOpen = true;
+					mulCnt = 0;
+					continue;
+				}
+				if ( mulCnt > 0 )
+					postBuf << " * ";
 
-				if ( retval == ASSIGN && isConst )
-					curStream() << "const ";
+				postBuf << sz;
+				++mulCnt;
 			}
-			else
-			{
-				if ( ! postDecl.empty() )
-					retval = ASSIGN;
-				else
-					retval = CTOR;
+			if ( ! needOpen )
+				postBuf << ']';
+			postDecl = postBuf.str();
 
-				if ( isConst )
-					curStream() << "const ";
-			}
-			curStream() << typeName;
+			if ( postDecl.empty() && ( arrInfo.second != "int" && arrInfo.second != "ctl_number_t" ) )
+				retval = CTOR;
+
+			if ( isConst )
+				curStream() << "const ";
+
+			curStream() << arrInfo.second;
 			isWritable = ( isInput || isWritable ) && postDecl.empty();
 			break;
 		}
@@ -1650,121 +1753,6 @@ CPPGenerator::replaceInit( std::string &initS, const std::string &name )
 		initS.replace( replB, 4, name );
 		replB = initS.find( "$$$$", replB + name.size() );
 	}
-}
-
-
-////////////////////////////////////////
-
-
-bool
-CPPGenerator::findBuiltinType( std::string &typeName,
-							   std::string &postDecl,
-							   const ArrayTypePtr &arrayType,
-							   CodeLContext &ctxt )
-{
-	int sx = arrayType->size();
-
-	if ( dynamic_cast<FloatType *>( arrayType->elementType().pointer() ) )
-	{
-		ArrayType *x = dynamic_cast<ArrayType *>( arrayType->elementType().pointer() );
-		// not x makes sure we are of size 1 (performance critical code, avoid
-		// creation of RcPtr type w/ lock)
-		if ( ! x && sx > 0 )
-		{
-			switch ( sx )
-			{
-				case 2: typeName = "ctl_vec2f_t"; break;
-				case 3: typeName = "ctl_vec3f_t"; break;
-				case 4: typeName = "ctl_vec4f_t"; break;
-				default:
-				{
-					// just do a C array of the low level type
-					typeName = "ctl_number_t";
-					std::stringstream pB;
-					pB << '[' << sx << ']';
-					postDecl = pB.str();
-					break;
-				}
-			}
-		}
-		return ! typeName.empty();
-	}
-
-	ArrayType *subArray = dynamic_cast<ArrayType *>( arrayType->elementType().pointer() );
-	if ( subArray && dynamic_cast<FloatType *>( subArray->elementType().pointer() ) &&
-		 sx == subArray->size() )
-	{
-		if ( sx == 3 )
-			typeName = "ctl_mat33f_t";
-		else if ( sx == 4 )
-			typeName = "ctl_mat44f_t";
-
-		return ! typeName.empty();
-	}
-
-	if ( dynamic_cast<IntType *>( arrayType->elementType().pointer() ) )
-	{
-		ArrayType *x = dynamic_cast<ArrayType *>( arrayType->elementType().pointer() );
-		int sx = arrayType->size();
-		// not x makes sure we are of size 1 (performance critical code, avoid
-		// creation of RcPtr type w/ lock)
-		if ( ! x && sx > 0 )
-		{
-			switch ( sx )
-			{
-				case 2:
-					typeName = "ctl_vec2i_t";
-					break;
-				case 3:
-					typeName = "ctl_vec3i_t";
-					break;
-				case 4:
-					typeName = "ctl_vec4i_t";
-					break;
-				default:
-				{
-					// just do a C array of the low level type
-					typeName = "int";
-					std::stringstream pB;
-					pB << '[' << sx << ']';
-					postDecl = pB.str();
-					break;
-				}
-			}
-		}
-		return ! typeName.empty();
-	}
-
-	return ! typeName.empty();
-}
-
-
-////////////////////////////////////////
-
-
-bool
-CPPGenerator::canBeBuiltinType( const ArrayType *arrayType )
-{
-	if ( dynamic_cast<FloatType *>( arrayType->elementType().pointer() ) ||
-		 dynamic_cast<IntType *>( arrayType->elementType().pointer() ) )
-	{
-		ArrayType *x = dynamic_cast<ArrayType *>( arrayType->elementType().pointer() );
-		// not x makes sure we are of size 1 (performance critical code, avoid
-		// creation of RcPtr type w/ lock)
-		if ( ! x && arrayType->size() > 0 )
-			return true;
-		return false;
-	}
-
-	ArrayType *subArray = dynamic_cast<ArrayType *>( arrayType->elementType().pointer() );
-	if ( subArray && dynamic_cast<FloatType *>( subArray->elementType().pointer() ) &&
-		 arrayType->size() == subArray->size() )
-	{
-		if ( arrayType->size() == 3 || arrayType->size() == 4 )
-			return true;
-	}
-
-	return false;
 }
 
 
@@ -2000,14 +1988,14 @@ CPPGenerator::extractLiteralConstants( const StatementNodePtr &consts,
 
 
 bool
-CPPGenerator::checkNeedsSizeArgument( const DataTypePtr &p, const std::string &name, SizeVector &sizes )
+CPPGenerator::checkNeedsSizeArgument( const DataTypePtr &p, const std::string &name )
 {
-	sizes.clear();
 	int cnt = 0;
 	if ( p->cDataType() == ArrayTypeEnum )
 	{
-		const ArrayType *arrT = dynamic_cast<const ArrayType *>( p.pointer() );
-		arrT->sizes( sizes );
+		const ArrayInfo &arrInfo = collapseArray( dynamic_cast<ArrayType *>( p.pointer() ) );
+		const std::vector<int> &sizes = arrInfo.first;
+
 		for ( size_t i = 0, N = sizes.size(); i != N; ++i )
 		{
 			if ( sizes[i] == 0 )
@@ -2044,13 +2032,15 @@ CPPGenerator::checkNeedsSizeArgument( const DataTypePtr &p, const std::string &n
 
 
 void
-CPPGenerator::extractSizeAndAdd( const ExprNodePtr &p, SizeVector &func_sizes, CodeLContext &ctxt )
+CPPGenerator::extractSizeAndAdd( const ExprNodePtr &p, const DataTypePtr &funcParm, CodeLContext &ctxt )
 {
 	if ( p->type->cDataType() == ArrayTypeEnum )
 	{
-		const ArrayType *arrT = dynamic_cast<const ArrayType *>( p->type.pointer() );
-		SizeVector arg_sizes;
-		arrT->sizes( arg_sizes );
+		const ArrayInfo &arrInfo = collapseArray( dynamic_cast<ArrayType *>( p->type.pointer() ) );
+		const std::vector<int> &arg_sizes = arrInfo.first;
+		const ArrayInfo &funcInfo = collapseArray( dynamic_cast<ArrayType *>( funcParm.pointer() ) );
+		const std::vector<int> &func_sizes = funcInfo.first;
+
 		if ( arg_sizes.size() == func_sizes.size() )
 		{
 			int cnt = 0;
@@ -2062,7 +2052,10 @@ CPPGenerator::extractSizeAndAdd( const ExprNodePtr &p, SizeVector &func_sizes, C
 					++cnt;
 					if ( arg_sizes[i] == 0 )
 						throw std::logic_error( "Unknown argument size" );
-					outSizes.push_back( arg_sizes[i] );
+					// take the absolute value since it could be a 'built-in' type
+					// but we emit templates for lookup1D, et al. to translate
+					// those...
+					outSizes.push_back( abs( arg_sizes[i] ) );
 				}
 			}
 			switch ( cnt )
@@ -2090,6 +2083,83 @@ CPPGenerator::extractSizeAndAdd( const ExprNodePtr &p, SizeVector &func_sizes, C
 	{
 		throw std::logic_error( "Unhandled array type coersion" );
 	}
+}
+
+
+////////////////////////////////////////
+
+
+const CPPGenerator::ArrayInfo &
+CPPGenerator::collapseArray( const ArrayType *arrPtr )
+{
+	if ( ! arrPtr )
+		throw std::logic_error( "Invalid array pointer passed" );
+
+	ArrayInfoContainer::const_iterator ati = myArrayTypes.find( arrPtr );
+	if ( ati == myArrayTypes.end() )
+	{
+		SizeVector usizes;
+		arrPtr->sizes( usizes );
+		std::vector<int> asize( usizes.size(), 0 );
+		for ( size_t i = 0, N = usizes.size(); i != N; ++i )
+			asize[i] = static_cast<int>( usizes[i] );
+
+		std::string coreType;
+		if ( asize.empty() )
+			throw std::logic_error( "Empty array size list" );
+
+		DataTypePtr coreTypePtr = arrPtr->coreType();
+		if ( dynamic_cast<FloatType *>( coreTypePtr.pointer() ) )
+			coreType = "ctl_number_t";
+		else if ( dynamic_cast<IntType *>( coreTypePtr.pointer() ) )
+			coreType = "int";
+		else
+			throw std::logic_error( "Currently unhandled core data type for array" );
+
+		if ( asize.size() == 2 && asize[0] == asize[1] &&
+			 ( asize[0] == 3 || asize[0] == 4 ) &&
+			 coreType != "int" )
+		{
+			if ( asize[0] == 3 )
+				coreType = "ctl_mat33f_t";
+			else
+				coreType = "ctl_mat44f_t";
+			asize[0] = -asize[0];
+			asize[1] = -asize[1];
+		}
+		else
+		{
+			switch ( asize.back() )
+			{
+				case 2:
+					if ( coreType == "int" )
+						coreType = "ctl_vec2i_t";
+					else
+						coreType = "ctl_vec2f_t";
+					asize.back() *= -1;
+					break;
+				case 3:
+					if ( coreType == "int" )
+						coreType = "ctl_vec3i_t";
+					else
+						coreType = "ctl_vec3f_t";
+					asize.back() *= -1;
+					break;
+				case 4:
+					if ( coreType == "int" )
+						coreType = "ctl_vec4i_t";
+					else
+						coreType = "ctl_vec4f_t";
+					asize.back() *= -1;
+					break;
+				default:
+					break;
+			}
+		}
+
+		ati = myArrayTypes.insert( std::make_pair( arrPtr, std::make_pair( asize, coreType ) ) ).first;
+	}
+	return ati->second;
 }
 
 } // namespace Ctl
