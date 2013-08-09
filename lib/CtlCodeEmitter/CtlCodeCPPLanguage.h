@@ -154,6 +154,7 @@ protected:
 	std::map<std::string, std::string> myGlobalLiterals;
 	std::map<std::string, std::string> myDefaultMappings;
 	std::vector< std::vector<std::string> > myCurModuleInit;
+	std::set<std::string> myStdFuncsUsed;
 	ArrayInfoContainer myArrayTypes;
 	// functions that can't be inline...
 	std::set<std::string> myFuncsUsedInInit;
