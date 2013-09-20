@@ -881,20 +881,242 @@ tiff_write( const std::string &name, float scale,
 
 #endif // HAVE_LIBTIFF
 
+#include <thread>
+#include <mutex>
+
+// bleh, need to add win32 support
+#ifdef WIN32
+#error "Need someone to implement semaphore (CreateSemaphore, etc.)"
+#else
+#include <semaphore.h>
+#include <errno.h>
+
+class semaphore
+{
+public:
+	semaphore( unsigned int init_count = 0 )
+	{
+		if ( sem_init( &mySem, 0, init_count ) != 0 )
+			throw std::runtime_error( "Unable to initialize semaphore" );
+	}
+	~semaphore( void )
+	{
+		sem_destroy( &mySem );
+	}
+
+	void post( void )
+	{
+		if ( sem_post( &mySem ) != 0 )
+			throw std::runtime_error( "Unable to post to semaphore" );
+	}
+
+	void wait( void )
+	{
+		while ( sem_wait( &mySem ) != 0 )
+		{
+			if ( errno == EINTR )
+				continue;
+			throw std::runtime_error( "Error waiting on semaphore" );
+		}
+	}
+
+private:
+	sem_t mySem;
+};
+#endif
 
 class proc_thread_pool
 {
 public:
-	proc_thread_pool( size_t nThreads = 0 );
+	proc_thread_pool( size_t nThreads = 0 )
+	{
+		if ( nThreads == 0 )
+			nThreads = std::thread::hardware_concurrency();
+
+		if ( nThreads > 1 )
+			myThreads.resize( nThreads );
+	}
+	~proc_thread_pool( void )
+	{
+		stop();
+	}
+
+	void start( void )
+	{
+		std::unique_lock<std::mutex> lk( myMutex );
+		if ( ! myThreads.empty() )
+		{
+			for ( size_t i = 0, N = myThreads.size(); i != N; ++i )
+				myThreads[i] = std::thread( &proc_thread_pool::loop, this );
+		}
+	}
+
+	void stop( void )
+	{
+		std::unique_lock<std::mutex> lk( myMutex );
+		std::vector<std::thread> threads;
+		std::swap( threads, myThreads );
+
+		size_t N = threads.size();
+		for ( size_t i = 0; i != N; ++i )
+			myWorkSemaphore.post();
+		lk.unlock();
+		for ( size_t i = 0; i != N; ++i )
+			threads.join();
+	}
 
 	void run_rrt( ctl::dpx::fb<float> &image_buffer,
-		float rInDefault = 0.F,
-		float gInDefault = 0.F,
-		float bInDefault = 0.F,
-		float aInDefault = 1.F );
-private:
-	static void thread_loop( void *me );
+		ctl_number_t rInDefault = 0.F,
+		ctl_number_t gInDefault = 0.F,
+		ctl_number_t bInDefault = 0.F,
+		ctl_number_t aInDefault = 1.F )
+	{
+		size_t lines = image_buffer.height();
 
-	pthread_cond_t myCondition;
-	pthread_mutex_t myLock;
+		std::unique_lock<std::mutex> lk( myMutex );
+		if ( myThreads.empty() )
+			dispatch_rrt( 0, lines,
+						  image_buffer,
+						  rInDefault,
+						  gInDefault,
+						  bInDefault,
+						  aInDefault );
+		else
+		{
+			size_t t = myThreads.size();
+			size_t nPer = ( lines + t - 1 ) / t;
+			size_t cur = 0;
+			size_t nPosted = 0;
+			while ( cur < lines )
+			{
+				size_t thisEnd = std::min( lines, cur + nPer );
+				myWorkUnits.push_back(
+					std::function<void (void)>(
+						std::bind( &proc_thread_pool::dispatch_rrt,
+								   this, cur, thisEnd,
+								   std::ref(image_buffer),
+								   rInDefault,
+								   gInDefault,
+								   bInDefault,
+								   aInDefault ) ) );
+				myWorkSemaphore.post();
+				cur = thisEnd;
+				++nPosted;
+			}
+			lk.unlock();
+			for ( size_t i = 0; i != nPosted; ++i )
+				myWorkFinishSemaphore.wait();
+		}
+	}
+
+private:
+	void dispatch_rrt( size_t startY, size_t endY,
+					   ctl::dpx::fb<float> &image,
+					   float rInDefault,
+					   float gInDefault,
+					   float bInDefault,
+					   float aInDefault )
+	{
+		float *img = image.ptr();
+		size_t w = image.width();
+		size_t c = image.depth();
+		size_t linesize = w * c;
+		img += startY * linesize;
+		switch ( c )
+		{
+			case 0: throw std::runtime_error( "Image with 0 channels receieved for processing" );
+			case 1:
+				for ( size_t y = startY; y < endY; ++y )
+					for ( size_t x = 0; x < w; ++x, img += c )
+					{
+						ctl_number_t rIn = img[0];
+						ctl_number_t gIn = gInDefault;
+						ctl_number_t bIn = bInDefault;
+						ctl_number_t aIn = aInDefault;
+						ctl_number_t rOut, gOut, bOut, aOut;
+						rrt( rIn, gIn, bIn, aIn, rOut, gOut, bOut, aOut );
+						rOut = img[0];
+					}
+				break;
+			case 2:
+				for ( size_t y = startY; y < endY; ++y )
+					for ( size_t x = 0; x < w; ++x, img += c )
+					{
+						ctl_number_t rIn = img[0];
+						ctl_number_t gIn = img[1];
+						ctl_number_t bIn = bInDefault;
+						ctl_number_t aIn = aInDefault;
+						ctl_number_t rOut, gOut, bOut, aOut;
+						rrt( rIn, gIn, bIn, aIn, rOut, gOut, bOut, aOut );
+						img[0] = rOut;
+						img[1] = gOut;
+					}
+				break;
+			case 3:
+				for ( size_t y = startY; y < endY; ++y )
+					for ( size_t x = 0; x < w; ++x, img += c )
+					{
+						ctl_number_t rIn = img[0];
+						ctl_number_t gIn = img[1];
+						ctl_number_t bIn = img[2];
+						ctl_number_t aIn = aInDefault;
+						ctl_number_t rOut, gOut, bOut, aOut;
+						rrt( rIn, gIn, bIn, aIn, rOut, gOut, bOut, aOut );
+						img[0] = rOut;
+						img[1] = gOut;
+						img[2] = bOut;
+					}
+				break;
+			default:
+				for ( size_t y = startY; y < endY; ++y )
+					for ( size_t x = 0; x < w; ++x, img += c )
+					{
+						ctl_number_t rIn = img[0];
+						ctl_number_t gIn = img[1];
+						ctl_number_t bIn = img[2];
+						ctl_number_t aIn = img[3];
+						ctl_number_t rOut, gOut, bOut, aOut;
+						rrt( rIn, gIn, bIn, aIn, rOut, gOut, bOut, aOut );
+						img[0] = rOut;
+						img[1] = gOut;
+						img[2] = bOut;
+						img[3] = aOut;
+					}
+				break;
+		}
+	}
+
+	void loop( void )
+	{
+		while ( true )
+		{
+			std::function<void (void)> fn;
+			{
+				std::unique_lock<std::mutex> lk( myMutex );
+				if ( idx >= myThreads.size() )
+					break;
+
+				if ( ! myWorkUnits.empty() )
+				{
+					fn = myWorkUnits.back();
+					myWorkUnits.pop_back();
+				}
+			}
+
+			if ( fn )
+			{
+				fn();
+				myWorkFinishSemaphore.post();
+			}
+			else
+				myWorkSemaphore.wait();
+		}
+	}
+
+	std::vector< std::function<void (void)> > myWorkUnits;
+	std::vector<std::thread> myThreads;
+	semaphore myWorkSemaphore;
+	semaphore myWorkFinishSemaphore;
+	std::mutex myMutex;
 };
+
