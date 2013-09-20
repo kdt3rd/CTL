@@ -229,12 +229,6 @@ main( int argc, const char *argv[] )
 				usageAndExit( argv[0], 0 );
 			}
 
-			if ( strcmp( argv[i], "--threads" ) == 0 )
-			{
-				genThreads = true;
-				continue;
-			}
-
 			if ( strcmp( argv[i], "-c" ) == 0 || strcmp( argv[i], "--compile-only" ) == 0)
 			{
 				srcOnly = true;
@@ -401,20 +395,6 @@ main( int argc, const char *argv[] )
 		}
 
 		interpreter.setModulePaths( modPaths );
-
-		if ( genThreads )
-		{
-			switch ( interpreter.getLanguage() )
-			{
-				case Ctl::CodeInterpreter::CPP03:
-				case Ctl::CodeInterpreter::CPP11:
-					break;
-				default:
-					std::cerr << "Thread generation does not work for specified language" << std::endl;
-					usageAndExit( argv[0] );
-					break;
-			}
-		}
 
 		interpreter.initStdLibrary();
 
