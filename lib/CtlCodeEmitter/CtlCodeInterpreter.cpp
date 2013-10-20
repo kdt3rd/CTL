@@ -131,6 +131,9 @@ CodeInterpreter::setLanguage( Language l )
 	myLanguageGenerator = NULL;
 	switch ( l )
 	{
+		case C89:
+		case C99:
+			throw std::logic_error( "Sorry, not implemented yet" );
 		case CPP03:
 			myLanguageGenerator = new CPPGenerator( false );
 			break;
@@ -138,13 +141,13 @@ CodeInterpreter::setLanguage( Language l )
 			myLanguageGenerator = new CPPGenerator( true );
 			break;
 		case OPENCL:
+		case GLSL:
 			throw std::logic_error( "Sorry, not implemented yet" );
 //			myLanguageGenerator = new OPENCLGenerator;
 //			break;
 		case CUDA:
-			throw std::logic_error( "Sorry, not implemented yet" );
-//			myLanguageGenerator = new CUDAGenerator;
-//			break;
+			myLanguageGenerator = new CUDAGenerator;
+			break;
 	}
 	myLanguageGenerator->setPrecision( curPrec );
 }
@@ -186,7 +189,10 @@ CodeInterpreter::initStdLibrary( void )
 void
 CodeInterpreter::emitHeader( std::ostream &out )
 {
-	out << myLanguageGenerator->getHeaderCode();
+	out << myLanguageGenerator->getHeaderPrefix()
+		<< myLanguageGenerator->getHeaderCode()
+		<< myLanguageGenerator->getHeaderSuffix()
+		<< std::endl;
 }
 
 

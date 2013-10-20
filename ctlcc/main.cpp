@@ -69,13 +69,28 @@ __declspec(noreturn) static void usageAndExit( const char *argv0, int rv = -1 );
 #endif
 
 static void
+emitAvailableLangs( std::ostream &os )
+{
+	os << "Available Language IDs:\n\n"
+	   << "  c      Generic C (C89) code\n"
+	   << "  c99    C99 compatible code (bool and inline)\n"
+	   << "  c++    Generic C++ (C++03) code\n"
+	   << "  c++11  C++11 code using initializer lists and threading\n"
+	   << "  cuda   CUDA compatible code\n"
+	   << "  opencl OpenCL compatible code\n"
+	   << "  glsl   GLSL compatible shader code\n"
+	   << std::endl;
+}
+
+static void
 usageAndExit( const char *argv0, int rv )
 {
 	std::cout << "ctlcc: " << argv0 << "<options> xxx.ctl ...\n\n"
 			  << " Options:\n\n"
 			  << "    -h|--help                        This message\n\n"
-			  << "    -c|--compile-only                Generate source only\n\n"
-			  << "    --lang=[c,c++,c++11,opencl,cuda] Which language standard to generate\n\n"
+			  << "    -c|--compile-only                Generate source only (no driver code)\n\n"
+			  << "    --lang=<langid>                  Which language standard to generate\n"
+			  << "    --available-langs                Print available languages and exit\n\n"
 			  << "    -I <path>|--include=<path>       Add an include path to search for CTL modules\n"
 			  << "    -o <file>|--output=<file>        Send output to file\n"
 			  << "    --header=<file>                  Send header definition to file\n"
@@ -300,6 +315,12 @@ main( int argc, const char *argv[] )
 				continue;
 			}
 
+			if ( strcmp( argv[i], "--available-langs" ) == 0 )
+			{
+				emitAvailableLangs( std::cout );
+				exit( 0 );
+			}
+
 			if ( strncmp( argv[i], "--lang=", 7 ) == 0 )
 			{
 				std::string lang( argv[i] + 7 );
@@ -313,6 +334,12 @@ main( int argc, const char *argv[] )
 						interpreter.setLanguage( Ctl::CodeInterpreter::OPENCL );
 					else if ( lang == "cuda" )
 						interpreter.setLanguage( Ctl::CodeInterpreter::CUDA );
+					else
+					{
+						std::cerr << "Sorry, language ID '" << lang << "' is not available.\nPlease check the argument spelling. The available language IDs are as follows:\n" << std::endl;
+						emitAvailableLangs( std::cerr );
+						exit( -1 );
+					}
 				}
 				else
 				{

@@ -48,119 +48,38 @@
 #ifndef INCLUDED_CTL_CODE_CPP_LANGUAGE_H
 #define INCLUDED_CTL_CODE_CPP_LANGUAGE_H
 
-#include "CtlCodeLanguageGenerator.h"
-#include "CtlCodeType.h"
-#include <map>
-#include <vector>
-#include <set>
+#include "CtlCodeCCommonLanguage.h"
 
 namespace Ctl
 {
 
-class CPPGenerator : public LanguageGenerator
+class CPPGenerator : public CCommonLanguage
 {
 public:
 	CPPGenerator( bool cpp11 = false );
 	virtual ~CPPGenerator( void );
 
-	virtual std::string getHeaderCode( void );
-	virtual std::string getCode( void );
-
-	// Chunk of text that sets up all the CTL library
-	// and any language specific includes
+	virtual bool supportsPrecision( Precision p ) const;
 	virtual std::string stdLibraryAndSetup( void );
 
-	virtual void pushBlock( void );
-	virtual void popBlock( void );
-
-	virtual void module( CodeLContext &ctxt, const CodeModuleNode &m );
-	virtual void function( CodeLContext &ctxt, const CodeFunctionNode &f );
-	virtual void variable( CodeLContext &ctxt, const CodeVariableNode &v );
-	virtual void assignment( CodeLContext &ctxt, const CodeAssignmentNode &v );
-	virtual void expr( CodeLContext &ctxt, const CodeExprStatementNode &v );
-	virtual void cond( CodeLContext &ctxt, const CodeIfNode &v );
-	virtual void retval( CodeLContext &ctxt, const CodeReturnNode &v );
-	virtual void loop( CodeLContext &ctxt, const CodeWhileNode &v );
-	virtual void binaryOp( CodeLContext &ctxt, const CodeBinaryOpNode &v );
-	virtual void unaryOp( CodeLContext &ctxt, const CodeUnaryOpNode &v );
-	virtual void index( CodeLContext &ctxt, const CodeArrayIndexNode &v );
-	virtual void member( CodeLContext &ctxt, const CodeMemberNode &v );
-	virtual void size( CodeLContext &ctxt, const CodeSizeNode &v );
-	virtual void name( CodeLContext &ctxt, const CodeNameNode &v );
-	virtual void boolLit( CodeLContext &ctxt, const CodeBoolLiteralNode &v );
-	virtual void intLit( CodeLContext &ctxt, const CodeIntLiteralNode &v );
-	virtual void uintLit( CodeLContext &ctxt, const CodeUIntLiteralNode &v );
-	virtual void halfLit( CodeLContext &ctxt, const CodeHalfLiteralNode &v );
-	virtual void floatLit( CodeLContext &ctxt, const CodeFloatLiteralNode &v );
-	virtual void stringLit( CodeLContext &ctxt, const CodeStringLiteralNode &v );
-	virtual void call( CodeLContext &ctxt, const CodeCallNode &v );
-	virtual void value( CodeLContext &ctxt, const CodeValueNode &v );
-
-	virtual void startToBool( void );
-	virtual void startToInt( void );
-	virtual void startToUint( void );
-	virtual void startToHalf( void );
-	virtual void startToFloat( void );
-	virtual void endCoersion( void );
-
-	virtual void emitToken( Token t );
-
 protected:
-	enum InitType
-	{
-		CTOR,
-		FUNC,
-		ASSIGN,
-		NONE
-	};
+	virtual bool usesFunctionInitializers( void ) const;
+	virtual bool supportsModuleDynamicInitialization( void ) const;
+	virtual bool supportsNamespaces( void ) const;
+	virtual bool supportsHalfType( void ) const;
 
-	void valueRecurse( CodeLContext &ctxt, const ExprNodeVector &elements,
-					   const DataTypePtr &t, size_t &index,
-					   const std::string &varName,
-					   bool isSubItem = false );
-	InitType variable( CodeLContext &ctxt,
-					   const std::string &name, const DataTypePtr &t,
-					   bool isConst, bool isInput, bool isWritable );
-	void doInit( InitType initT, CodeLContext &ctxt,
-				 const ExprNodePtr &initV, const std::string &varName );
-	void replaceInit( std::string &initS, const std::string &name );
+	virtual std::string constructNamespaceTag( const std::string &modName );
+	virtual const std::string &getInlineKeyword( void ) const;
+	virtual const std::string &getFunctionPrefix( void ) const;
+	virtual const std::string &getGlobalPrefix( void ) const;
+	virtual const std::string &getCTLNamespaceTag( void ) const;
+	virtual const std::string &getBoolTypeName( void ) const;
+	virtual const std::string &getBoolLiteral( bool v ) const;
+	virtual const std::string &getConstLiteral( void ) const;
+	virtual void startCast( const char *type );
 
-	bool checkNeedInitInModuleInit( const ExprNodePtr &initV, bool deep = false );
-	bool isAllLiterals( const ExprNodePtr &v );
-	bool usesUninitLocalGlobals( const ExprNodePtr &v );
-
-	// returns true if there are any non-trivial constants
-	void extractLiteralConstants( const StatementNodePtr &consts,
-								  CodeLContext &ctxt );
-
-	bool checkNeedsSizeArgument( const DataTypePtr &p, const std::string &base_name );
-	void extractSizeAndAdd( const ExprNodePtr &p, const DataTypePtr &funcParm, CodeLContext &ctxt );
-	typedef std::pair<std::vector<int>, std::string> ArrayInfo;
-	// NB: The RcPtr type doesn't work for an array container, guess
-	// it doesn't implement the less than operator in a std::container
-	// kind of way, so we use the bare pointer...
-	typedef std::map<const ArrayType *, ArrayInfo> ArrayInfoContainer;
-	const ArrayInfo &collapseArray( const ArrayType *arrPtr );
-
+private:
 	bool myCPP11Mode;
-	std::stringstream myCodeStream;
-	std::stringstream myHeaderStream;
-	int myInElse;
-	int myInModuleInit;
-	int myInFunction;
-	int myDoForwardDecl;
-	InitType myCurInitType;
-	std::map<std::string, InitType> myGlobalInitType;
-	std::map<std::string, std::string> myGlobalLiterals;
-	std::map<std::string, std::string> myDefaultMappings;
-	std::vector< std::vector<std::string> > myCurModuleInit;
-	std::set<std::string> myStdFuncsUsed;
-	ArrayInfoContainer myArrayTypes;
-	// functions that can't be inline...
-	std::set<std::string> myFuncsUsedInInit;
-	std::set<std::string> myGlobalVariables;
-	Module *myCurModule;
-	std::stringstream myForwardDecl;
 };
 
 }

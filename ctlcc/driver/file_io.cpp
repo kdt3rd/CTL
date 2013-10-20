@@ -1,33 +1,58 @@
+///////////////////////////////////////////////////////////////////////////
+// Copyright (c) 2013 Academy of Motion Picture Arts and Sciences 
+// ("A.M.P.A.S."). Portions contributed by others as indicated.
+// All rights reserved.
+// 
+// A worldwide, royalty-free, non-exclusive right to copy, modify, create
+// derivatives, and use, in source and binary forms, is hereby granted, 
+// subject to acceptance of this license. Performance of any of the 
+// aforementioned acts indicates acceptance to be bound by the following 
+// terms and conditions:
+//
+//  * Copies of source code, in whole or in part, must retain the 
+//    above copyright notice, this list of conditions and the 
+//    Disclaimer of Warranty.
+//
+//  * Use in binary form must retain the above copyright notice, 
+//    this list of conditions and the Disclaimer of Warranty in the
+//    documentation and/or other materials provided with the distribution.
+//
+//  * Nothing in this license shall be deemed to grant any rights to 
+//    trademarks, copyrights, patents, trade secrets or any other 
+//    intellectual property of A.M.P.A.S. or any contributors, except 
+//    as expressly stated herein.
+//
+//  * Neither the name "A.M.P.A.S." nor the name of any other 
+//    contributors to this software may be used to endorse or promote 
+//    products derivative of or based on this software without express 
+//    prior written permission of A.M.P.A.S. or the contributors, as 
+//    appropriate.
+// 
+// This license shall be construed pursuant to the laws of the State of 
+// California, and any disputes related thereto shall be subject to the 
+// jurisdiction of the courts therein.
+//
+// Disclaimer of Warranty: THIS SOFTWARE IS PROVIDED BY A.M.P.A.S. AND 
+// CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, 
+// BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS 
+// FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT ARE DISCLAIMED. IN NO 
+// EVENT SHALL A.M.P.A.S., OR ANY CONTRIBUTORS OR DISTRIBUTORS, BE LIABLE 
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, RESITUTIONARY, 
+// OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// WITHOUT LIMITING THE GENERALITY OF THE FOREGOING, THE ACADEMY 
+// SPECIFICALLY DISCLAIMS ANY REPRESENTATIONS OR WARRANTIES WHATSOEVER 
+// RELATED TO PATENT OR OTHER INTELLECTUAL PROPERTY RIGHTS IN THE ACADEMY 
+// COLOR ENCODING SYSTEM, OR APPLICATIONS THEREOF, HELD BY PARTIES OTHER 
+// THAN A.M.P.A.S., WHETHER DISCLOSED OR UNDISCLOSED.
+///////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-#include <fstream>
-#include <pthread.h>
-#include <stdint.h>
-
-struct format_t
-{
-	format_t( void )
-			: driver( NULL ), ext( NULL ),
-			  bps( 0 ), src_bps( 0 ), squish( false ), descriptor( 0 )
-	{}
-	format_t(const char *_ext, uint8_t _bps)
-			: driver( NULL ), ext( _ext ), dps( _bps ),
-			  src_bps( 0 ), squish( false ), descriptor( 0 )
-	{}
-
-	const char *driver;
-	const char *ext;
-	uint8_t bps;
-	uint8_t src_bps;
-	bool squish; // remove alpha channel.
-	uint8_t descriptor; // DPX enumeration, plus the following values:
-	                    // 157 - XYZ
-	                    // 158 - XYZA
-	                    // 159 - YA
-	                    // 160 - RA
-	                    // 161 - GA
-	                    // 162 - BA
-};
+#include "file_io.h"
 
 #include <dpx.hh>
 #ifdef HAVE_OPENEXR
@@ -37,6 +62,7 @@ struct format_t
 # include <ImfArray.h>
 # include <ImfHeader.h>
 # include <ImfChannelList.h>
+# include <ImfCompression.h>
 # include <Iex.h>
 #endif // HAVE_OPENEXR
 #ifdef HAVE_ACESFILE
@@ -66,7 +92,7 @@ dpx_read( const std::string &name, float scale,
 	dpxheader.read( &file, 0, &pixels, scale );
 
 	format.src_bps = dpxheader.elements[0].bits_per_sample;
-	pixels->swizzle( dpxheader.elements[0].descriptor, FALSE );
+	pixels.swizzle( dpxheader.elements[0].descriptor, FALSE );
 
 	return true;
 }
@@ -80,7 +106,7 @@ dpx_write( const std::string &name, float scale,
 	ctl::dpx dpxheader;
 
 	dpxheader.elements[0].data_sign = 0;
-	dpxheader.elements[0].bits_per_sample = format->bps;
+	dpxheader.elements[0].bits_per_sample = format.bps;
 	dpxheader.write( &file, 0, pixels, scale );
 	dpxheader.write( &file );	
 }
@@ -106,9 +132,9 @@ exr_read( const std::string &name, float scale,
 	Imath::Box2i dw = file.header().dataWindow();
 
 	if ( file.header().channels().begin().channel().type == Imf::HALF )
-		format->src_bps = 16;
+		format.src_bps = 16;
 	else
-		format->src_bps = 32;
+		format.src_bps = 32;
 		
 	int width = dw.max.x - dw.min.x + 1;
 	int height = dw.max.y - dw.min.y + 1;
@@ -116,8 +142,8 @@ exr_read( const std::string &name, float scale,
 	pixels.init( width, height, 4 );
 	Imf::PixelType pixelType = Imf::FLOAT;
 	
-	int xstride = sizeof( *pixels.ptr() ) * pixels->depth();
-	int ystride = sizeof( *pixels.ptr() ) * pixels->depth() * pixels->width();
+	int xstride = sizeof( *pixels.ptr() ) * pixels.depth();
+	int ystride = sizeof( *pixels.ptr() ) * pixels.depth() * pixels.width();
 	
 	Imf::FrameBuffer frameBuffer;
 	frameBuffer.insert( "R", Imf::Slice( pixelType,
@@ -131,12 +157,12 @@ exr_read( const std::string &name, float scale,
 										 1, 1, 0.0 ) );
 	
 	frameBuffer.insert( "B", Imf::Slice( pixelType,
-										 (char *)( pixels->ptr() + 2 ),
+										 (char *)( pixels.ptr() + 2 ),
 										 xstride, ystride,
 										 1, 1, 0.0 ) );
 	
 	frameBuffer.insert( "A", Imf::Slice( pixelType,
-										 (char *)( pixels->ptr() + 3 ),
+										 (char *)( pixels.ptr() + 3 ),
 										 xstride, ystride,
 										 1, 1, 1.0 ) );
 	
@@ -146,8 +172,8 @@ exr_read( const std::string &name, float scale,
 	if ( scale == 0.0 || scale == 1.0 )
 		return true;
 
-	float *p=pixels->ptr();
-	for(uint64_t i=0; i<pixels->count(); i++)
+	float *p=pixels.ptr();
+	for(uint64_t i=0; i<pixels.count(); i++)
 	{
 		*p=*p*scale;
 		p++;
@@ -158,7 +184,7 @@ exr_read( const std::string &name, float scale,
 static void
 exr_write32( const std::string &name, float scale,
 			 const ctl::dpx::fb<float> &pixels,
-			 const Compression &compression )
+			 const compression_t &compression )
 {
 	int depth = pixels.depth();
 	float width = pixels.width();
@@ -219,7 +245,7 @@ exr_write32( const std::string &name, float scale,
 static void
 exr_write16( const std::string &name, float scale,
 			 const ctl::dpx::fb<float> &pixels,
-			 const Compression &compression )
+			 const compression_t &compression )
 {
 	if (scale == 0.0) scale = 1.0;
 
@@ -250,7 +276,7 @@ static void
 exr_write( const std::string &name, float scale,
 		   const ctl::dpx::fb<float> &pixels,
 		   const format_t &format,
-		   const Compression &compression)
+		   const compression_t &compression)
 {
 	switch ( format.bps )
 	{
@@ -270,25 +296,28 @@ exr_write( const std::string &name, float scale,
 #ifdef HAVE_ACESFILE
 
 static void
-aces_write( const std::string &name, float scale, 
-			uint32_t width, uint32_t height, uint32_t channels,
-			const float *pixels,
+aces_write( const std::string &name, float scale,
+			const ctl::dpx::fb<float> &pixels,
 			const format_t &format )
 {
-	std::vector<half_bytes> scaled_pixels;
+	std::vector<halfBytes> scaled_pixels;
 	
+	uint32_t width = pixels.width();
+	uint32_t height = pixels.height();
+	uint32_t channels = pixels.depth();
+
 	if (scale == 0.0f) scale = 1.0f;
-	const float *in = pixels;
+	const float *inF = pixels.ptr();
 		
 	scaled_pixels.resize( height * width * channels );
-	half_bytes *out = &scaled_pixels[0];
-	for ( size_t i = 0, N = scaled_pixedls.size(); i != N; ++i )
+	halfBytes *out = &scaled_pixels[0];
+	for ( size_t i = 0, N = scaled_pixels.size(); i != N; ++i )
 	{
-		half tmpV( *(in++) / scale );
+		half tmpV( *(inF++) / scale );
 		*(out++)=tmpV.bits();
 	}
 
-	half_bytes *in = &scaled_pixels[0];
+	halfBytes *in = &scaled_pixels[0];
 	
 	std::vector<std::string> filenames;
 	filenames.push_back( name );
@@ -359,7 +388,7 @@ aces_write( const std::string &name, float scale,
 
 	for ( uint32 row = 0; row < height; row++)
 	{
-		half_bytes *rgbData = in + width*channels*row;
+		halfBytes *rgbData = in + width*channels*row;
 		x.storeHalfRow( rgbData, row ); 
 	}
 
@@ -369,116 +398,42 @@ aces_write( const std::string &name, float scale,
 #endif // HAVE_ACESFILE
 
 #ifdef HAVE_LIBTIFF
-static void
-tiff_interleave_int8( float *o, int offset, float scale,
-						  T *r, int r_stride, T *g, int g_stride,
-						  T *b, int b_stride, T *a, int a_stride,
-						  uint32_t width )
+template <typename T>
+inline void
+tiff_interleave( float *o, float offset, float scale, float maxV,
+				 T *r, int r_stride, T *g, int g_stride,
+				 T *b, int b_stride, T *a, int a_stride,
+				 uint32_t width )
 {
-	if ( scale == 0.0 )
-		scale = 255.F;
+	float f;
+	if ( scale == 0.F )
+		scale = maxV;
 
 	for ( uint32_t i = 0; i != width; ++i )
 	{
 		if ( r )
 		{
-			f=*r+offset;
-			r=r+r_stride;
-			*(o++)=f/scale;
+			f = static_cast<float>( *r ) + offset;
+			r += r_stride;
+			*(o++) = f / scale;
 		}
 		if( g )
 		{
-			f=*g+offset;
-			g=g+g_stride;
-			*(o++)=f/scale;
+			f = static_cast<float>( *g ) + offset;
+			g += g_stride;
+			*(o++) = f / scale;
 		}
 		if( b )
 		{
-			f=*b+offset;
-			b=b+b_stride;
-			*(o++)=f/scale;
+			f = static_cast<float>( *b ) + offset;
+			b += b_stride;
+			*(o++) = f / scale;
 		}
 		if( a )
 		{
-			f=*a+offset;
-			a=a+a_stride;
-			*(o++)=f/scale;
-		}
-	}
-}
-						   
-static void
-tiff_interleave_int16( float *o, uint16_t offset, float scale,
-					   uint16_t *r, int r_stride, uint16_t *g, int g_stride,
-					   uint16_t *b, int b_stride, uint16_t *a, int a_stride,
-					   uint32_t width )
-{
-	if ( scale == 0.0 )
-		scale = 65535.F;
-
-	for ( uint32_t i = 0; i != width; ++i )
-	{
-		if ( r )
-		{
-			f=*r+offset;
-			r=r+r_stride;
-			*(o++)=f/scale;
-		}
-		if ( g )
-		{
-			f=*g+offset;
-			g=g+g_stride;
-			*(o++)=f/scale;
-		}
-		if ( b )
-		{
-			f=*b+offset;
-			b=b+b_stride;
-			*(o++)=f/scale;
-		}
-		if ( a )
-		{
-			f=*a+offset;
-			a=a+a_stride;
-			*(o++)=f/scale;
-		}
-	}
-}
-
-static void
-tiff_interleave_float( float *o, float scale,
-					   float *r, int r_stride, float *g, int g_stride,
-					   float *b, int b_stride, float *a, int a_stride,
-					   uint32_t width )
-{
-	if ( scale == 0.0 )
-		scale = 1.0;
-
-	for ( uint32_t i = 0; i != width; ++i )
-	{
-		if ( r )
-		{
-			f=*r;
-			r=r+r_stride;
-			*(o++)=f/scale;
-		}
-		if ( g )
-		{
-			f=*g;
-			g=g+g_stride;
-			*(o++)=f/scale;
-		}
-		if ( b )
-		{
-			f=*b;
-			b=b+b_stride;
-			*(o++)=f/scale;
-		}
-		if ( a )
-		{
-			f=*a;
-			a=a+a_stride;
-			*(o++)=f/scale;
+			f = static_cast<float>( *a ) + offset;
+			a += a_stride;
+			*(o++) = f / scale;
 		}
 	}
 }
@@ -557,13 +512,13 @@ tiff_read_multiplane( TIFF *t, float scale, ctl::dpx::fb<float> &pixels )
 				TIFFReadScanline(t, scanline_buffer_uint8[d],
 								 row+orientation_offset, d);
 			}
-			row_ptr=pixels->ptr()+row*pixels->width()*pixels->depth();
-			tiff_interleave_int8(row_ptr, offset, scale,
-								 scanline_buffer_uint8[0], 1,
-								 scanline_buffer_uint8[1], 1,
-								 scanline_buffer_uint8[2], 1,
-								 scanline_buffer_uint8[3], 1,
-								 w);
+			row_ptr=pixels.ptr()+row*pixels.width()*pixels.depth();
+			tiff_interleave<uint8_t>(row_ptr, offset, scale, 255.F,
+									 scanline_buffer_uint8[0], 1,
+									 scanline_buffer_uint8[1], 1,
+									 scanline_buffer_uint8[2], 1,
+									 scanline_buffer_uint8[3], 1,
+									 w );
 		}
 	} else if(bits_per_sample==16) {
 		for(row=0; row<4; row++) {
@@ -585,13 +540,13 @@ tiff_read_multiplane( TIFF *t, float scale, ctl::dpx::fb<float> &pixels )
 				TIFFReadScanline(t, scanline_buffer_uint16[d],
 								 row+orientation_offset, d);
 			}
-			row_ptr=pixels->ptr()+row*pixels->width()*pixels->depth();
-			tiff_interleave_int16(row_ptr, offset, scale,
-								  scanline_buffer_uint16[0], 1,
-								  scanline_buffer_uint16[1], 1,
-								  scanline_buffer_uint16[2], 1,
-								  scanline_buffer_uint16[3], 1,
-								  w);
+			row_ptr=pixels.ptr()+row*pixels.width()*pixels.depth();
+			tiff_interleave<uint16_t>( row_ptr, offset, scale, 65535.F,
+									   scanline_buffer_uint16[0], 1,
+									   scanline_buffer_uint16[1], 1,
+									   scanline_buffer_uint16[2], 1,
+									   scanline_buffer_uint16[3], 1,
+									   w );
 		}
 	} else if(sample_format==3) {
 		for(row=0; row<4; row++) {
@@ -609,13 +564,13 @@ tiff_read_multiplane( TIFF *t, float scale, ctl::dpx::fb<float> &pixels )
 				TIFFReadScanline(t, scanline_buffer_float[d],
 								 row+orientation_offset, d);
 			}
-			row_ptr=pixels->ptr()+row*pixels->width()*pixels->depth();
-			tiff_interleave_float(row_ptr, scale,
-								  scanline_buffer_float[0], 1,
-								  scanline_buffer_float[1], 1,
-								  scanline_buffer_float[2], 1,
-								  scanline_buffer_float[3], 1,
-								  w);
+			row_ptr=pixels.ptr()+row*pixels.width()*pixels.depth();
+			tiff_interleave<float>( row_ptr, 0.F, scale, 1.F,
+									scanline_buffer_float[0], 1,
+									scanline_buffer_float[1], 1,
+									scanline_buffer_float[2], 1,
+									scanline_buffer_float[3], 1,
+									w );
 		}
 	}
 }
@@ -652,19 +607,19 @@ tiff_read_interleaved( TIFF *t, float scale, ctl::dpx::fb<float> &pixels )
 			TIFFReadScanline(t, scanline_buffer_uint8, row, 0);
 			row_ptr=pixels.ptr()+row*pixels.width()*pixels.depth();
 			if(samples_per_pixel==3) {
-				tiff_interleave_int8(row_ptr, offset, scale,
-									 scanline_buffer_uint8+0, 3,
-									 scanline_buffer_uint8+1, 3,
-									 scanline_buffer_uint8+2, 3,
-									 NULL, 0,
-									 w);
+				tiff_interleave<uint8_t>( row_ptr, offset, scale, 255.F,
+										  scanline_buffer_uint8+0, 3,
+										  scanline_buffer_uint8+1, 3,
+										  scanline_buffer_uint8+2, 3,
+										  NULL, 0,
+										  w );
 			} else {
-				tiff_interleave_int8(row_ptr, offset, scale,
-									 scanline_buffer_uint8+0, 4,
-									 scanline_buffer_uint8+1, 4,
-									 scanline_buffer_uint8+2, 4,
-									 scanline_buffer_uint8+3, 4,
-									 w);
+				tiff_interleave<uint8_t>( row_ptr, offset, scale, 255.F,
+										  scanline_buffer_uint8+0, 4,
+										  scanline_buffer_uint8+1, 4,
+										  scanline_buffer_uint8+2, 4,
+										  scanline_buffer_uint8+3, 4,
+										  w);
 			}
 		}
 	} else if(bits_per_sample==16) {
@@ -677,19 +632,19 @@ tiff_read_interleaved( TIFF *t, float scale, ctl::dpx::fb<float> &pixels )
 			TIFFReadScanline(t, scanline_buffer_uint16, row, 0);
 			row_ptr=pixels.ptr()+row*pixels.width()*pixels.depth();
 			if(samples_per_pixel==3) {
-				tiff_interleave_int16(row_ptr, offset, scale,
-									  scanline_buffer_uint16+0, 3,
-									  scanline_buffer_uint16+1, 3,
-									  scanline_buffer_uint16+2, 3,
-									  NULL, 0,
-									  w);
+				tiff_interleave<uint16_t>(row_ptr, offset, scale, 65535.F,
+										  scanline_buffer_uint16+0, 3,
+										  scanline_buffer_uint16+1, 3,
+										  scanline_buffer_uint16+2, 3,
+										  NULL, 0,
+										  w);
 			} else {
-				tiff_interleave_int16(row_ptr, offset, scale,
-									  scanline_buffer_uint16+0, 4,
-									  scanline_buffer_uint16+1, 4,
-									  scanline_buffer_uint16+2, 4,
-									  scanline_buffer_uint16+3, 4,
-									  w);
+				tiff_interleave<uint16_t>(row_ptr, offset, scale, 65535.F,
+										  scanline_buffer_uint16+0, 4,
+										  scanline_buffer_uint16+1, 4,
+										  scanline_buffer_uint16+2, 4,
+										  scanline_buffer_uint16+3, 4,
+										  w);
 			}
 		}
 	} else if(sample_format==3) {
@@ -698,19 +653,19 @@ tiff_read_interleaved( TIFF *t, float scale, ctl::dpx::fb<float> &pixels )
 			TIFFReadScanline(t, scanline_buffer_float, row, 0);
 			row_ptr=pixels.ptr()+row*pixels.width()*pixels.depth();
 			if(samples_per_pixel==3) {
-				tiff_interleave_float(row_ptr, scale,
-									  scanline_buffer_float+0, 3,
-									  scanline_buffer_float+1, 3,
-									  scanline_buffer_float+2, 3,
-									  NULL, 0,
-									  w);
+				tiff_interleave<float>(row_ptr, 0.F, scale, 1.F,
+									   scanline_buffer_float+0, 3,
+									   scanline_buffer_float+1, 3,
+									   scanline_buffer_float+2, 3,
+									   NULL, 0,
+									   w);
 			} else {
-				tiff_interleave_float(row_ptr, scale,
-									  scanline_buffer_float+0, 4,
-									  scanline_buffer_float+1, 4,
-									  scanline_buffer_float+2, 4,
-									  scanline_buffer_float+3, 4,
-									  w);
+				tiff_interleave<float>(row_ptr, 0.F, scale, 1.F,
+									   scanline_buffer_float+0, 4,
+									   scanline_buffer_float+1, 4,
+									   scanline_buffer_float+2, 4,
+									   scanline_buffer_float+3, 4,
+									   w);
 			}
 		}
 	}
@@ -738,8 +693,8 @@ tiff_read_failsafe( TIFF *t, float scale, ctl::dpx::fb<float> &pixels )
 	for ( uint32_t i = 0; i != h; ++i )
 	{
 		flip = temp_buffer + sizeof(uint32_t) * w * ( h - i - 1 );
-		tiff_interleave_int8( pixels.ptr() + w * i * 4, 0, scale,
-							  flip+0, 4, flip+1, 4, flip+2, 4, flip+3, 4, w );
+		tiff_interleave<uint8_t>( pixels.ptr() + w * i * 4, 0, scale, 255.F,
+								  flip+0, 4, flip+1, 4, flip+2, 4, flip+3, 4, w );
 	}
 }
 
@@ -765,7 +720,7 @@ tiff_read( const std::string &name, float scale,
 
 	TIFFGetFieldDefaulted( t, TIFFTAG_SAMPLESPERPIXEL, &samples_per_pixel );
 	TIFFGetFieldDefaulted( t, TIFFTAG_BITSPERSAMPLE, &bits_per_sample );
-	format->src_bps = bits_per_sample;
+	format.src_bps = bits_per_sample;
 	TIFFGetFieldDefaulted( t, TIFFTAG_SAMPLEFORMAT, &sample_format );
 	TIFFGetFieldDefaulted( t, TIFFTAG_PHOTOMETRIC, &photometric );
 	TIFFGetFieldDefaulted( t, TIFFTAG_ORIENTATION, &orientation );
@@ -805,7 +760,8 @@ tiff_read( const std::string &name, float scale,
 static void
 tiff_write( const std::string &name, float scale,
 			const ctl::dpx::fb<float> &pixels,
-			const format_t &format )
+			const format_t &format,
+			const compression_t &compression )
 {
 	TIFF *t;
 	uint16_t bits_per_sample;
@@ -817,17 +773,17 @@ tiff_write( const std::string &name, float scale,
 	TIFFSetErrorHandler(ErrorHandler);
 	TIFFSetWarningHandler(WarningHandler);
 
-	bits_per_sample=format->bps;
-	if(format->bps<=8) {
+	bits_per_sample=format.bps;
+	if(format.bps<=8) {
 		bits_per_sample=8;
-	} else if(format->bps<=16) {
+	} else if(format.bps<=16) {
 		bits_per_sample=16;
-	} else if(format->bps!=32) {
+	} else if(format.bps!=32) {
 		THROW(Iex::ArgExc, "TIFF files can only support files with <=16 bps "
 			  "(integer) or 32 bps (float).");
 	}
 
-	t=TIFFOpen(name, "w");
+	t=TIFFOpen(name.c_str(), "w");
 	if(t==NULL) {
 		// What went wrong
 	}
@@ -839,6 +795,16 @@ tiff_write( const std::string &name, float scale,
 	TIFFSetField(t, TIFFTAG_IMAGELENGTH, pixels.height());
 	TIFFSetField(t, TIFFTAG_ROWSPERSTRIP, 1);
 	TIFFSetField(t, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
+	if ( compression.name == "ZIP" )
+	{
+		TIFFSetField( t, TIFFTAG_COMPRESSION, COMPRESSION_ADOBE_DEFLATE );
+		TIFFSetField( t, TIFFTAG_ZIPQUALITY, 9 );
+	}
+	else
+	{
+		TIFFSetField( t, TIFFTAG_COMPRESSION, COMPRESSION_NONE );
+		
+	}
 	// Worst case...
 	scanline_buffer=alloca(sizeof(float)*pixels.depth()*pixels.width());
 
@@ -881,242 +847,140 @@ tiff_write( const std::string &name, float scale,
 
 #endif // HAVE_LIBTIFF
 
-#include <thread>
-#include <mutex>
 
-// bleh, need to add win32 support
-#ifdef WIN32
-#error "Need someone to implement semaphore (CreateSemaphore, etc.)"
-#else
-#include <semaphore.h>
-#include <errno.h>
+////////////////////////////////////////
 
-class semaphore
+
+const std::vector<compression_t> &
+getAvailableCompressionSchemes( void )
 {
-public:
-	semaphore( unsigned int init_count = 0 )
+	static std::vector<compression_t> retval;
+
+	if ( retval.empty() )
 	{
-		if ( sem_init( &mySem, 0, init_count ) != 0 )
-			throw std::runtime_error( "Unable to initialize semaphore" );
-	}
-	~semaphore( void )
-	{
-		sem_destroy( &mySem );
+#ifdef HAVE_OPENEXR
+		retval.push_back( compression_t( "NONE", int(Imf::NO_COMPRESSION) ) );
+		retval.push_back( compression_t( "RLE", int(Imf::RLE_COMPRESSION) ) );
+		retval.push_back( compression_t( "ZIPS", int(Imf::ZIPS_COMPRESSION) ) );
+		retval.push_back( compression_t( "ZIP", int(Imf::ZIP_COMPRESSION) ) );
+		retval.push_back( compression_t( "PIZ", int(Imf::PIZ_COMPRESSION) ) );
+		retval.push_back( compression_t( "PXR24", int(Imf::PXR24_COMPRESSION) ) );
+		retval.push_back( compression_t( "B44", int(Imf::B44_COMPRESSION) ) );
+		retval.push_back( compression_t( "B44A", int(Imf::B44A_COMPRESSION) ) );
+#else
+# ifdef HAVE_LIBTIFF
+		retval.push_back( compression_t( "ZIP", int(0) ) );
+# endif
+#endif
 	}
 
-	void post( void )
+	return retval;
+}
+
+
+////////////////////////////////////////
+
+
+const std::vector<file_format_t> &
+getAllowedFormats( void )
+{
+	static std::vector<file_format_t> retval;
+
+	if ( retval.empty() )
 	{
-		if ( sem_post( &mySem ) != 0 )
-			throw std::runtime_error( "Unable to post to semaphore" );
+		retval.push_back( file_format_t( "dpx", format_t( "dpx", 0 ) ) );
+		retval.push_back( file_format_t( "dpx8", format_t( "dpx", 8 ) ) );
+		retval.push_back( file_format_t( "dpx10", format_t( "dpx", 10 ) ) );
+		retval.push_back( file_format_t( "dpx12", format_t( "dpx", 12 ) ) );
+		retval.push_back( file_format_t( "dpx16", format_t( "dpx", 16 ) ) );
+
+#ifdef HAVE_OPENEXR
+		retval.push_back( file_format_t( "exr", format_t( "exr", 0 ) ) );
+		retval.push_back( file_format_t( "exr16", format_t( "exr", 16 ) ) );
+		retval.push_back( file_format_t( "exr32", format_t( "exr", 32 ) ) );
+#endif
+#ifdef HAVE_ACESFILE
+		retval.push_back( file_format_t( "aces", format_t( "aces", 16 ) ) );
+#endif
+#ifdef HAVE_LIBTIFF
+		retval.push_back( file_format_t( "tif", format_t( "tif", 0 ) ) );
+		retval.push_back( file_format_t( "tiff", format_t( "tiff", 0 ) ) );
+		retval.push_back( file_format_t( "tiff8", format_t( "tiff", 8 ) ) );
+		retval.push_back( file_format_t( "tiff16", format_t( "tiff", 16 ) ) );
+		retval.push_back( file_format_t( "tiff32", format_t( "tiff", 32 ) ) );
+		retval.push_back( file_format_t( "tif8", format_t( "tif", 8 ) ) );
+		retval.push_back( file_format_t( "tif16", format_t( "tif", 16 ) ) );
+		retval.push_back( file_format_t( "tif32", format_t( "tif", 32 ) ) );
+#endif
 	}
 
-	void wait( void )
+	return retval;
+}
+
+
+////////////////////////////////////////
+
+
+bool
+readImage( const std::string &filename, float scale,
+		   ctl::dpx::fb<float> &pixels,
+		   format_t &format )
+{
+	if ( ! dpx_read( filename, scale, pixels, format )
+#ifdef HAVE_OPENEXR
+		&& ! exr_read( filename, scale, pixels, format )
+#endif
+#ifdef HAVE_LIBTIFF
+		&& ! tiff_read( filename, scale, pixels, format )
+#endif
+		)
 	{
-		while ( sem_wait( &mySem ) != 0 )
-		{
-			if ( errno == EINTR )
-				continue;
-			throw std::runtime_error( "Error waiting on semaphore" );
-		}
+		std::cerr << "Unable to read image file '" << filename << "': Unknown format" << std::endl;
+		return false;
 	}
 
-private:
-	sem_t mySem;
-};
+	return true;
+}
+
+
+////////////////////////////////////////
+
+
+bool
+writeImage( const std::string &filename, float scale,
+		const ctl::dpx::fb<float> &pixels,
+		const format_t &format,
+		const compression_t &compression )
+{
+#ifdef HAVE_ACESFILE
+	if ( format.ext == "aces" )
+	{
+		aces_write( filename, scale, pixels, format );
+		return true;
+	}
+#endif
+#ifdef HAVE_OPENEXR
+	if ( format.ext == "exr" )
+	{
+		exr_write( filename, scale, pixels, format, compression );
+		return true;
+	}
+#endif
+#ifdef HAVE_LIBTIFF
+	if ( format.ext == "tiff" || format.ext == "tif" )
+	{
+		tiff_write( filename, scale, pixels, format, compression );
+		return true;
+	}
 #endif
 
-class proc_thread_pool
-{
-public:
-	proc_thread_pool( size_t nThreads = 0 )
+	if ( format.ext == "dpx" || format.ext == "adx" )
 	{
-		if ( nThreads == 0 )
-			nThreads = std::thread::hardware_concurrency();
-
-		if ( nThreads > 1 )
-			myThreads.resize( nThreads );
-	}
-	~proc_thread_pool( void )
-	{
-		stop();
+		dpx_write( filename, scale, pixels, format );
+		return true;
 	}
 
-	void start( void )
-	{
-		std::unique_lock<std::mutex> lk( myMutex );
-		if ( ! myThreads.empty() )
-		{
-			for ( size_t i = 0, N = myThreads.size(); i != N; ++i )
-				myThreads[i] = std::thread( &proc_thread_pool::loop, this );
-		}
-	}
-
-	void stop( void )
-	{
-		std::unique_lock<std::mutex> lk( myMutex );
-		std::vector<std::thread> threads;
-		std::swap( threads, myThreads );
-
-		size_t N = threads.size();
-		for ( size_t i = 0; i != N; ++i )
-			myWorkSemaphore.post();
-		lk.unlock();
-		for ( size_t i = 0; i != N; ++i )
-			threads.join();
-	}
-
-	void run_rrt( ctl::dpx::fb<float> &image_buffer,
-		ctl_number_t rInDefault = 0.F,
-		ctl_number_t gInDefault = 0.F,
-		ctl_number_t bInDefault = 0.F,
-		ctl_number_t aInDefault = 1.F )
-	{
-		size_t lines = image_buffer.height();
-
-		std::unique_lock<std::mutex> lk( myMutex );
-		if ( myThreads.empty() )
-			dispatch_rrt( 0, lines,
-						  image_buffer,
-						  rInDefault,
-						  gInDefault,
-						  bInDefault,
-						  aInDefault );
-		else
-		{
-			size_t t = myThreads.size();
-			size_t nPer = ( lines + t - 1 ) / t;
-			size_t cur = 0;
-			size_t nPosted = 0;
-			while ( cur < lines )
-			{
-				size_t thisEnd = std::min( lines, cur + nPer );
-				myWorkUnits.push_back(
-					std::function<void (void)>(
-						std::bind( &proc_thread_pool::dispatch_rrt,
-								   this, cur, thisEnd,
-								   std::ref(image_buffer),
-								   rInDefault,
-								   gInDefault,
-								   bInDefault,
-								   aInDefault ) ) );
-				myWorkSemaphore.post();
-				cur = thisEnd;
-				++nPosted;
-			}
-			lk.unlock();
-			for ( size_t i = 0; i != nPosted; ++i )
-				myWorkFinishSemaphore.wait();
-		}
-	}
-
-private:
-	void dispatch_rrt( size_t startY, size_t endY,
-					   ctl::dpx::fb<float> &image,
-					   float rInDefault,
-					   float gInDefault,
-					   float bInDefault,
-					   float aInDefault )
-	{
-		float *img = image.ptr();
-		size_t w = image.width();
-		size_t c = image.depth();
-		size_t linesize = w * c;
-		img += startY * linesize;
-		switch ( c )
-		{
-			case 0: throw std::runtime_error( "Image with 0 channels receieved for processing" );
-			case 1:
-				for ( size_t y = startY; y < endY; ++y )
-					for ( size_t x = 0; x < w; ++x, img += c )
-					{
-						ctl_number_t rIn = img[0];
-						ctl_number_t gIn = gInDefault;
-						ctl_number_t bIn = bInDefault;
-						ctl_number_t aIn = aInDefault;
-						ctl_number_t rOut, gOut, bOut, aOut;
-						rrt( rIn, gIn, bIn, aIn, rOut, gOut, bOut, aOut );
-						rOut = img[0];
-					}
-				break;
-			case 2:
-				for ( size_t y = startY; y < endY; ++y )
-					for ( size_t x = 0; x < w; ++x, img += c )
-					{
-						ctl_number_t rIn = img[0];
-						ctl_number_t gIn = img[1];
-						ctl_number_t bIn = bInDefault;
-						ctl_number_t aIn = aInDefault;
-						ctl_number_t rOut, gOut, bOut, aOut;
-						rrt( rIn, gIn, bIn, aIn, rOut, gOut, bOut, aOut );
-						img[0] = rOut;
-						img[1] = gOut;
-					}
-				break;
-			case 3:
-				for ( size_t y = startY; y < endY; ++y )
-					for ( size_t x = 0; x < w; ++x, img += c )
-					{
-						ctl_number_t rIn = img[0];
-						ctl_number_t gIn = img[1];
-						ctl_number_t bIn = img[2];
-						ctl_number_t aIn = aInDefault;
-						ctl_number_t rOut, gOut, bOut, aOut;
-						rrt( rIn, gIn, bIn, aIn, rOut, gOut, bOut, aOut );
-						img[0] = rOut;
-						img[1] = gOut;
-						img[2] = bOut;
-					}
-				break;
-			default:
-				for ( size_t y = startY; y < endY; ++y )
-					for ( size_t x = 0; x < w; ++x, img += c )
-					{
-						ctl_number_t rIn = img[0];
-						ctl_number_t gIn = img[1];
-						ctl_number_t bIn = img[2];
-						ctl_number_t aIn = img[3];
-						ctl_number_t rOut, gOut, bOut, aOut;
-						rrt( rIn, gIn, bIn, aIn, rOut, gOut, bOut, aOut );
-						img[0] = rOut;
-						img[1] = gOut;
-						img[2] = bOut;
-						img[3] = aOut;
-					}
-				break;
-		}
-	}
-
-	void loop( void )
-	{
-		while ( true )
-		{
-			std::function<void (void)> fn;
-			{
-				std::unique_lock<std::mutex> lk( myMutex );
-				if ( idx >= myThreads.size() )
-					break;
-
-				if ( ! myWorkUnits.empty() )
-				{
-					fn = myWorkUnits.back();
-					myWorkUnits.pop_back();
-				}
-			}
-
-			if ( fn )
-			{
-				fn();
-				myWorkFinishSemaphore.post();
-			}
-			else
-				myWorkSemaphore.wait();
-		}
-	}
-
-	std::vector< std::function<void (void)> > myWorkUnits;
-	std::vector<std::thread> myThreads;
-	semaphore myWorkSemaphore;
-	semaphore myWorkFinishSemaphore;
-	std::mutex myMutex;
-};
+	std::cerr << "Unable to determine output file format for output file '" << filename << "': Unhandled format extension '" << format.ext << "'" << std::endl;
+	return false;
+}
 

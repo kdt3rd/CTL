@@ -70,6 +70,39 @@ LanguageGenerator::~LanguageGenerator( void )
 
 
 void
+LanguageGenerator::setPrecision( Precision p )
+{
+	if ( ! supportsPrecision( p ) )
+		throw std::logic_error( "Attempt to set a precision not supported by this generator" );
+
+	myPrecision = p;
+}
+
+
+////////////////////////////////////////
+
+
+std::string
+LanguageGenerator::getHeaderPrefix( void ) const
+{
+	return std::string();
+}
+
+
+////////////////////////////////////////
+
+
+std::string
+LanguageGenerator::getHeaderSuffix( void ) const
+{
+	return std::string();
+}
+
+
+////////////////////////////////////////
+
+
+void
 LanguageGenerator::addIndent( void )
 {
 	for ( int i = 0; i < myCurIndent; ++i )

@@ -71,9 +71,48 @@ namespace {
 bool
 isAssignment( const SyntaxNodePtr &node)
 {
-	return node.cast<AssignmentNode>() ||
-		node.cast<VariableNode>() ||
-		node.cast<ReturnNode>();
+	return node.is_subclass<AssignmentNode>() ||
+		node.is_subclass<VariableNode>() ||
+		node.is_subclass<ReturnNode>();
+}
+
+
+static AddrPtr
+newStaticVariableGeneric(Module *module, size_t objectSize)
+{
+    return new CodeDataAddr( 0 );
+}
+
+template <typename Native, typename O1, typename O2, typename O3, typename O4>
+void
+generateCast( const Native *me, const ExprNodePtr &expr, LContext &ctxt, void (LanguageGenerator::* StartConversionFunc)( void ) )
+{
+	if ( expr->type.is_subclass<Native>() )
+	{
+		expr->generateCode( ctxt );
+		return;
+	}
+
+	CodeLContext &lctxt = static_cast<CodeLContext &>(ctxt);
+	LanguageGenerator &gen = lctxt.generator();
+
+	(gen.*StartConversionFunc)();
+
+	if (expr->type.is_subclass<O1>())
+		expr->generateCode( ctxt );
+	else if (expr->type.is_subclass<O2>())
+		expr->generateCode( ctxt );
+	else if (expr->type.is_subclass<O3>())
+		expr->generateCode( ctxt );
+	else if (expr->type.is_subclass<O4>())
+		expr->generateCode( ctxt );
+	else
+	{
+		MESSAGE_LE( ctxt, ERR_TYPE, expr->lineNumber,
+					"Cannot cast value of type " << expr->type->asString() <<
+					" to type " << me->asString() << "." );
+	}
+	gen.endCoersion();
 }
 
 } // namespace
@@ -154,39 +193,8 @@ void
 CodeBoolType::generateCastFrom( const ExprNodePtr &expr,
 								LContext &ctxt ) const
 {
-	if ( expr->type.cast<BoolType>() )
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if ( expr->type.cast<IntType>() )
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<UIntType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<HalfType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<FloatType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	MESSAGE_LE( ctxt, ERR_TYPE, expr->lineNumber,
-				"Cannot cast value of type " << expr->type->asString() <<
-				" to type " << asString() << "." );
+	generateCast<BoolType, IntType, UIntType, HalfType, FloatType>(
+		this, expr, ctxt, &LanguageGenerator::startToBool );
 }
 
 
@@ -246,28 +254,6 @@ CodeBoolType::generateCode( const SyntaxNodePtr &node,
 
 		return;
 	}
-
-	if (node.cast<CallNode>())
-	{
-		//
-		// Push a placeholder for the return value for a call to
-		// a function that returns an int.
-		//
-//		slcontext.addInst( new CodePushPlaceholderInst(alignedObjectSize(),
-//													   node->lineNumber) );
-		return;
-	}
-}
-
-
-static AddrPtr
-newStaticVariableGeneric(Module *module, size_t objectSize)
-{
-//    SimdModule *smodule = static_cast <SimdModule *> (module);
-//    SimdReg* reg = new SimdReg (false, objectSize);
-//    
-//    smodule->addStaticData (reg);
-    return new CodeDataAddr( 0 );
 }
 
 AddrPtr
@@ -280,9 +266,6 @@ void
 CodeBoolType::newAutomaticVariable( StatementNodePtr node, 
 									LContext &ctxt ) const 
 {
-//	CodeLContext &slcontext = static_cast <CodeLContext &> (lcontext);
-//	slcontext.addInst (new CodePushPlaceholderInst
-//					   (objectSize(), node->lineNumber));
 }
 
 
@@ -318,39 +301,8 @@ void
 CodeIntType::generateCastFrom( const ExprNodePtr &expr,
 							   LContext &ctxt ) const
 {
-	if (expr->type.cast<BoolType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<IntType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<UIntType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<HalfType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<FloatType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	MESSAGE_LE( ctxt, ERR_TYPE, expr->lineNumber,
-				"Cannot cast value of type " << expr->type->asString() <<
-				" to type " << asString() << "." );
+	generateCast<IntType, BoolType, UIntType, HalfType, FloatType>(
+		this, expr, ctxt, &LanguageGenerator::startToInt );
 }
 
 
@@ -415,17 +367,6 @@ CodeIntType::generateCode( const SyntaxNodePtr &node,
 
 		return;
 	}
-
-	if (node.cast<CallNode>())
-	{
-		//
-		// Push a placeholder for the return value for a call to
-		// a function that returns an int.
-		//
-//		slcontext.addInst (new CodePushPlaceholderInst(alignedObjectSize(),
-//													   node->lineNumber));
-		return;
-	}
 }
 
 
@@ -440,9 +381,6 @@ void
 CodeIntType::newAutomaticVariable( StatementNodePtr node, 
 								   LContext &ctxt ) const
 {
-//	CodeLContext &slcontext = static_cast <CodeLContext &> (lcontext);
-//	slcontext.addInst (new CodePushPlaceholderInst
-//					   (objectSize(), node->lineNumber));
 }
 
 
@@ -477,39 +415,8 @@ void
 CodeUIntType::generateCastFrom( const ExprNodePtr &expr,
 								LContext &ctxt ) const
 {
-	if (expr->type.cast<BoolType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<IntType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<UIntType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<HalfType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<FloatType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	MESSAGE_LE( ctxt, ERR_TYPE, expr->lineNumber,
-				"Cannot cast value of type " << expr->type->asString() <<
-				" to type " << asString() << "." );
+	generateCast<UIntType, BoolType, IntType, HalfType, FloatType>(
+		this, expr, ctxt, &LanguageGenerator::startToUint );
 }
 
 
@@ -574,18 +481,6 @@ CodeUIntType::generateCode( const SyntaxNodePtr &node,
 
 		return;
 	}
-
-	if (node.cast<CallNode>())
-	{
-		//
-		// Push a placeholder for the return value for a call to
-		// a function that returns an int.
-		//
-//		slcontext.addInst
-//			(new CodePushPlaceholderInst (alignedObjectSize(),
-//										  node->lineNumber));
-		return;
-	}
 }
 
 
@@ -600,9 +495,6 @@ void
 CodeUIntType::newAutomaticVariable( StatementNodePtr node, 
 									LContext &ctxt ) const
 {
-//	CodeLContext &slcontext = static_cast <CodeLContext &> (lcontext);
-//	slcontext.addInst (new CodePushPlaceholderInst
-//					   (objectSize(), node->lineNumber));
 }
 
 
@@ -637,39 +529,8 @@ void
 CodeHalfType::generateCastFrom( const ExprNodePtr &expr,
 								LContext &ctxt ) const
 {
-	if (expr->type.cast<BoolType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<IntType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<UIntType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<HalfType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if (expr->type.cast<FloatType>())
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	MESSAGE_LE( ctxt, ERR_TYPE, expr->lineNumber,
-				"Cannot cast value of type " << expr->type->asString() <<
-				" to type " << asString() << "." );
+	generateCast<HalfType, BoolType, IntType, UIntType, FloatType>(
+		this, expr, ctxt, &LanguageGenerator::startToHalf );
 }
 
 
@@ -678,11 +539,7 @@ CodeHalfType::generateCode( const SyntaxNodePtr &node,
 							LContext &ctxt) const
 {
 	if ( isAssignment( node ) )
-	{
-//		slcontext.addInst
-//			(new CodeAssignInst (alignedObjectSize(), node->lineNumber));
 		return;
-	}
 
 	CodeLContext &lctxt = static_cast<CodeLContext &>(ctxt);
 	if (UnaryOpNodePtr unOp = node.cast<UnaryOpNode>())
@@ -731,18 +588,6 @@ CodeHalfType::generateCode( const SyntaxNodePtr &node,
 
 		return;
 	}
-
-	if ( node.cast<CallNode>() )
-	{
-		//
-		// Push a placeholder for the return value for a call to
-		// a function that returns an int.
-		//
-//		slcontext.addInst
-//			(new CodePushPlaceholderInst (alignedObjectSize(),
-//										  node->lineNumber));
-		return;
-	}
 }
 
 
@@ -757,9 +602,6 @@ void
 CodeHalfType::newAutomaticVariable( StatementNodePtr node, 
 									LContext &ctxt ) const
 {
-//	CodeLContext &slcontext = static_cast <CodeLContext &> (lcontext);
-//	slcontext.addInst (new CodePushPlaceholderInst
-//					   (objectSize(), node->lineNumber));
 }
 
 
@@ -794,39 +636,8 @@ void
 CodeFloatType::generateCastFrom( const ExprNodePtr &expr,
 								 LContext &ctxt ) const
 {
-	if ( dynamic_cast<FloatType *>( expr->type.pointer() ) )
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if ( dynamic_cast<BoolType *>( expr->type.pointer() ) )
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if ( dynamic_cast<IntType *>( expr->type.pointer() ) )
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if ( dynamic_cast<UIntType *>( expr->type.pointer() ) )
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	if ( dynamic_cast<HalfType *>( expr->type.pointer() ) )
-	{
-		expr->generateCode( ctxt );
-		return;
-	}
-
-	MESSAGE_LE( ctxt, ERR_TYPE, expr->lineNumber,
-				"Cannot cast value of type " << expr->type->asString() <<
-				" to type " << asString() << "." );
+	generateCast<FloatType, BoolType, IntType, UIntType, HalfType>(
+		this, expr, ctxt, &LanguageGenerator::startToFloat );
 }
 
 
@@ -886,17 +697,6 @@ CodeFloatType::generateCode( const SyntaxNodePtr &node,
 
 		return;
 	}
-
-//	if ( node.cast<CallNode>() )
-//	{
-//		//
-//		// Push a placeholder for the return value for a call to
-//		// a function that returns an int.
-//		//
-//		slcontext.addInst (new CodePushPlaceholderInst (alignedObjectSize(),
-//														node->lineNumber));
-//		return;
-//	}
 }
 
 
@@ -911,9 +711,6 @@ void
 CodeFloatType::newAutomaticVariable( StatementNodePtr node, 
 									 LContext &ctxt ) const 
 {
-//	CodeLContext &slcontext = static_cast <CodeLContext &> (lcontext);
-//	slcontext.addInst (new CodePushPlaceholderInst
-//					   (objectSize(), node->lineNumber));
 }
 
 
@@ -948,7 +745,7 @@ void
 CodeStringType::generateCastFrom( const ExprNodePtr &expr,
 								  LContext &ctxt ) const
 {
-	if ( expr->type.cast<StringType>() )
+	if ( expr->type.is_subclass<StringType>() )
 	{
 		expr->generateCode( ctxt );
 		return;
@@ -996,17 +793,6 @@ CodeStringType::generateCode( const SyntaxNodePtr &node,
 
 		return;
 	}
-
-	if ( node.cast<CallNode>() )
-	{
-		//
-		// Push a placeholder for the return value for a call to
-		// a function that returns an int.
-		//
-//		slcontext.addInst (new CodePushPlaceholderInst (alignedObjectSize(),
-//														node->lineNumber));
-		return;
-	}
 }
 
 
@@ -1021,10 +807,6 @@ void
 CodeStringType::newAutomaticVariable( StatementNodePtr node,
 									  LContext &ctxt ) const 
 {
-//	CodeLContext &slcontext = static_cast <CodeLContext &> (lcontext);
-//
-//	slcontext.addInst (new CodePushPlaceholderInst
-//					   (alignedObjectSize(), node->lineNumber));
 }
 
 
@@ -1034,25 +816,6 @@ CodeArrayType::CodeArrayType( const DataTypePtr &elementType, int size,
 		  _unknownSize(0),
 		  _unknownESize(0)
 {
-//	if( lcontext)
-//	{
-//		// If size is not specified, this is a function parameter
-//		// size will be stored as a parameter
-//		if( size == 0 )
-//		{
-//			IntTypePtr intType = lcontext->newIntType( void );
-//			_unknownSize = lcontext->parameterAddr (intType);
-//		}
-//
-//		// if the element size is not known, create a local variable
-//		// to store the element size computed later
-//		CodeArrayTypePtr at = elementType.cast<CodeArrayType>();
-//		if( at && (at->unknownElementSize() || at->unknownSize() ))
-//		{
-//			IntTypePtr intType = lcontext->newIntType( void );
-//			_unknownESize = lcontext->autoVariableAddr (intType);
-//		}
-//	}
 }
 
 
@@ -1092,7 +855,6 @@ void
 CodeArrayType::generateCastFrom( const ExprNodePtr &expr,
 								 LContext &ctxt ) const
 {
-//	assert(isSameTypeAs(expr->type));
 	expr->generateCode( ctxt );
 	return;
 }
@@ -1102,57 +864,6 @@ void
 CodeArrayType::generateCode( const SyntaxNodePtr &node,
 							 LContext &ctxt ) const
 {
-#if 0
-//	CodeLContext &slcontext = static_cast <CodeLContext &> (lcontext);
-
-	VariableNode *var = dynamic_cast<VariableNode *>( node.pointer() );
-	if( var && dynamic_cast<ValueNode *>( var->initialValue.pointer() ) )
-	{
-//		SizeVector sizes;
-//		SizeVector offsets;
-//		coreSizes(0, sizes, offsets);
-//		slcontext.addInst (new CodeInitializeInst(sizes, 
-//												  offsets,
-//												  node->lineNumber));
-		return;
-	}
-	else if ( isAssignment( node ) )  // return or assignment
-	{
-//		slcontext.addInst (new CodeAssignArrayInst
-//						   (size(), elementSize(), node->lineNumber));
-		return;
-	}
-	else if ( dynamic_cast<ArrayIndexNode *>( node.pointer() ) )
-	{
-		if(unknownSize() || unknownElementSize())
-		{
-//			slcontext.addInst (new CodeIndexVSArrayInst(elementSize(),
-//														unknownElementSize(), 
-//														size(),
-//														unknownSize(),
-//														node->lineNumber));
-		}
-		else
-		{
-//			slcontext.addInst (new CodeIndexArrayInst(elementSize(), 
-//													  node->lineNumber,
-//													  size()));
-		}
-		return;
-	}
-	else if ( dynamic_cast<SizeNode *>( node.pointer() ) )
-	{
-		assert(size() == 0);
-//		slcontext.addInst (new CodePushRefInst (unknownSize(), 
-//												node->lineNumber));
-	}
-	else if ( dynamic_cast<CallNode *>( node.pointer() ) )
-	{
-//		slcontext.addInst (new CodePushPlaceholderInst(objectSize(), 
-//													   node->lineNumber));
-		return;
-	}
-#endif
 }
 
 
@@ -1167,9 +878,6 @@ void
 CodeArrayType::newAutomaticVariable (StatementNodePtr node, 
 									 LContext &ctxt ) const
 {
-//	CodeLContext &slcontext = static_cast <CodeLContext &> (lcontext);
-//	slcontext.addInst (new CodePushPlaceholderInst
-//					   (objectSize(), node->lineNumber));
 }
 
 
@@ -1229,42 +937,6 @@ void
 CodeStructType::generateCode( const SyntaxNodePtr &node,
 							  LContext &ctxt ) const
 {
-//	CodeLContext &slcontext = static_cast <CodeLContext &> (lcontext);
-
-	VariableNodePtr var = node.cast<VariableNode>();
-	if( var && var->initialValue.cast<ValueNode>())
-	{
-		SizeVector sizes;
-		SizeVector offsets;
-		coreSizes(0, sizes, offsets);
-//		slcontext.addInst (new CodeInitializeInst(sizes, 
-//												  offsets, 
-//												  node->lineNumber));
-		return;
-	}
-
-	if( MemberNodePtr mem = node.cast<MemberNode>() )
-	{
-//		slcontext.addInst (new CodeAccessMemberInst(mem->offset,
-//													(node->lineNumber)));
-		return;
-	}
-
-	if ( isAssignment( node ) )
-	{
-//		slcontext.addInst (new CodeAssignInst
-//						   (alignedObjectSize(), node->lineNumber));
-		return;
-	}
-
-	if ( node.cast<CallNode>() )
-	{
-		// Push a placeholder for the return value for a call to
-		// a function that returns a struct
-//		slcontext.addInst (new CodePushPlaceholderInst (alignedObjectSize(),
-//														node->lineNumber));
-		return;
-	}
 }
 
 
@@ -1279,9 +951,6 @@ void
 CodeStructType::newAutomaticVariable (StatementNodePtr node, 
 									  LContext &ctxt ) const
 {
-//	CodeLContext &slcontext = static_cast <CodeLContext &> (lcontext);
-//	slcontext.addInst (new CodePushPlaceholderInst
-//					   (alignedObjectSize(), node->lineNumber));
 }
 
 

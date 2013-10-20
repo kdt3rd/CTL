@@ -69,10 +69,13 @@ class CodeInterpreter: public Interpreter
 public:
 	enum Language
 	{
+		C89,
+		C99,
 		CPP03,
 		CPP11,
 		OPENCL,
-		CUDA
+		CUDA,
+		GLSL
 	};
 
     CodeInterpreter( void );

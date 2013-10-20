@@ -13,6 +13,7 @@ add_library( CtlCodeEmitter ${DO_SHARED}
 	CtlCodeStdTypes.cpp
 	CtlCodeStdLibrary.cpp
 	CtlCodeLanguageGenerator.cpp
+	CtlCodeCCommonLanguage.cpp
 	CtlCodeCPPLanguage.cpp
 	CtlCodeCUDALanguage.cpp
 	CtlCodeOPENCLLanguage.cpp

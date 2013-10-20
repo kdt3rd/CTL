@@ -46,12 +46,13 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include "CtlCodeCUDALanguage.h"
+#include <stdexcept>
 
 namespace Ctl
 {
 
 CUDAGenerator::CUDAGenerator( void )
-		: CPPGenerator( false )
+		: CCommonLanguage()
 {
 }
 
@@ -61,6 +62,178 @@ CUDAGenerator::CUDAGenerator( void )
 
 CUDAGenerator::~CUDAGenerator( void )
 {
+}
+
+
+////////////////////////////////////////
+
+
+bool
+CUDAGenerator::supportsPrecision( Precision p ) const
+{
+	switch ( p )
+	{
+		case FLOAT: return true;
+		case DOUBLE: return true;
+		case LONG_DOUBLE: return false;
+
+		default:
+			throw std::logic_error( "unhandled precision style" );
+	}
+}
+
+
+////////////////////////////////////////
+
+
+std::string
+CUDAGenerator::stdLibraryAndSetup( void )
+{
+	std::stringstream retval;
+
+	return retval.str();
+}
+
+
+////////////////////////////////////////
+
+
+bool
+CUDAGenerator::usesFunctionInitializers( void ) const
+{
+	return false;
+}
+
+
+////////////////////////////////////////
+
+
+bool
+CUDAGenerator::supportsModuleDynamicInitialization( void ) const
+{
+	return false;
+}
+
+
+////////////////////////////////////////
+
+
+bool
+CUDAGenerator::supportsNamespaces( void ) const
+{
+	return false;
+}
+
+
+////////////////////////////////////////
+
+
+bool
+CUDAGenerator::supportsHalfType( void ) const
+{
+	return false;
+}
+
+
+////////////////////////////////////////
+
+
+std::string
+CUDAGenerator::constructNamespaceTag( const std::string &modName )
+{
+	return modName + "_";
+}
+
+
+////////////////////////////////////////
+
+
+const std::string &
+CUDAGenerator::getInlineKeyword( void ) const
+{
+	static std::string kInline = "__inline__";
+	return kInline;
+}
+
+
+////////////////////////////////////////
+
+
+const std::string &
+CUDAGenerator::getFunctionPrefix( void ) const
+{
+	static std::string kPrefix = "__device__";
+	return kPrefix;
+}
+
+
+////////////////////////////////////////
+
+
+const std::string &
+CUDAGenerator::getGlobalPrefix( void ) const
+{
+	static std::string kGlobal = "__device__";
+	return kGlobal;
+}
+
+
+////////////////////////////////////////
+
+
+const std::string &
+CUDAGenerator::getCTLNamespaceTag( void ) const
+{
+	static std::string kTag = "_ctlcc_";
+	return kTag;
+}
+
+
+////////////////////////////////////////
+
+
+const std::string &
+CUDAGenerator::getBoolTypeName( void ) const
+{
+	static std::string kType = "bool";
+	return kType;
+}
+
+
+////////////////////////////////////////
+
+
+const std::string &
+CUDAGenerator::getBoolLiteral( bool v ) const
+{
+	static std::string kBoolTrue = "true";
+	static std::string kBoolFalse = "false";
+	if ( v )
+		return kBoolTrue;
+	return kBoolFalse;
+}
+
+
+////////////////////////////////////////
+
+
+const std::string &
+CUDAGenerator::getConstLiteral( void ) const
+{
+	// do we need __constant__ support? I think const works in all
+	// recent versions of cuda (>= 4 anyway)
+	static std::string kConst = "const";
+	return kConst;
+}
+
+
+////////////////////////////////////////
+
+
+void
+CUDAGenerator::startCast( const char *type )
+{
+	curStream() << '(' << type << ")( ";
 }
 
 } // namespace Ctl

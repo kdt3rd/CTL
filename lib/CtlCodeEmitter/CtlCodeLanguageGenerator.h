@@ -77,14 +77,19 @@ public:
 
 	// Needs to be called before the init stuff is called
 	// or any modules are parsed
-	void setPrecision( Precision p ) { myPrecision = p; }
-	Precision getPrecision( void ) const { return myPrecision; }
+	virtual bool supportsPrecision( Precision p ) const = 0;
+	void setPrecision( Precision p );
+	inline Precision getPrecision( void ) const { return myPrecision; }
 
-	const MainRoutineMap &getMainRoutines( void ) const { return myMainRoutines; }
+	inline const MainRoutineMap &getMainRoutines( void ) const { return myMainRoutines; }
 
+	// any necessary setup, i.e. ifdef __cplusplus extern "C" stuff
+	virtual std::string getHeaderPrefix( void ) const;
 	// Should just be the setup code (i.e. forward decls
 	// for functions in C)
 	virtual std::string getHeaderCode( void ) = 0;
+	// any necessary cleanup i.e. ifdef __cplusplus stuff
+	virtual std::string getHeaderSuffix( void ) const;
 
 	// Chunk of text that sets up all the CTL library
 	// and any language specific includes
@@ -130,6 +135,7 @@ public:
 	virtual void emitToken( Token t ) = 0;
 
 protected:
+
 	void setIndentText( const std::string &i );
 
 	void addIndent( void );
