@@ -98,6 +98,8 @@ public:
 	// Returns the body of code
 	virtual std::string getCode( void ) = 0;
 
+	virtual std::string getDriver( void );
+
 	virtual void pushBlock( void ) = 0;
 	virtual void popBlock( void ) = 0;
 
@@ -159,12 +161,13 @@ protected:
 	void registerMainRoutine( const std::string &name, const std::string &nsName,
 							  const SymbolInfoPtr &fnInfo );
 
+	MainRoutineMap myMainRoutines;
+
 private:
 	Precision myPrecision;
 	std::string myIndent;
 	int myCurIndent;
 	std::stack<std::ostream *> myStreamStack;
-	MainRoutineMap myMainRoutines;
 };
 
 } // namespace Ctl

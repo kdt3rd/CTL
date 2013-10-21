@@ -88,6 +88,7 @@ public:
 
 	Language getLanguage( void ) const { return myLanguage; }
 	void setLanguage( Language l );
+	bool isDriverEnabledForLanguage( void ) const;
 
 	void setPrecision( LanguageGenerator::Precision p );
 

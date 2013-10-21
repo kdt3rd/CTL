@@ -65,6 +65,11 @@
 # include <ImfCompression.h>
 # include <Iex.h>
 #endif // HAVE_OPENEXR
+// GRRRRRRRRRR, aces_types.h and tiff.h conflict w/ typedefs
+// on the Mac
+#ifdef __APPLE__
+# undef HAVE_ACESFILE
+#endif
 #ifdef HAVE_ACESFILE
 # include <aces_Writer.h>
 # include <stdexcept>
@@ -121,7 +126,7 @@ exr_read( const std::string &name, float scale,
 		std::ifstream ins( name.c_str() );
 		unsigned int magic, endian;
 
-		ins.open( name );
+		ins.open( name.c_str() );
 
 		ins.read( (char *)&magic, sizeof(magic) );
 		if ( magic != 0x01312f76 )
@@ -868,13 +873,31 @@ getAvailableCompressionSchemes( void )
 		retval.push_back( compression_t( "B44", int(Imf::B44_COMPRESSION) ) );
 		retval.push_back( compression_t( "B44A", int(Imf::B44A_COMPRESSION) ) );
 #else
+		retval.push_back( compression_t( "NONE", int(0) ) );
 # ifdef HAVE_LIBTIFF
-		retval.push_back( compression_t( "ZIP", int(0) ) );
+		retval.push_back( compression_t( "ZIP", int(1) ) );
 # endif
 #endif
 	}
 
 	return retval;
+}
+
+
+////////////////////////////////////////
+
+
+compression_t
+findCompressionByName( const std::string &name )
+{
+	const std::vector<compression_t> &availComps = getAvailableCompressionSchemes();
+	for ( size_t i = 0; i != availComps.size(); ++i )
+	{
+		if ( availComps[i].name == name )
+			return availComps[i];
+	}
+
+	return compression_t();
 }
 
 
@@ -915,6 +938,22 @@ getAllowedFormats( void )
 	}
 
 	return retval;
+}
+
+
+////////////////////////////////////////
+
+
+file_format_t
+findFormatByName( const std::string &name )
+{
+	const std::vector<file_format_t> &fmts = getAllowedFormats();
+	for ( size_t i = 0; i != fmts.size(); ++i )
+	{
+		if ( fmts[i].name == name )
+			return fmts[i];
+	}
+	return file_format_t();
 }
 
 

@@ -30,5 +30,9 @@
 #define DPX_LIBS "ctldpx"
 #define DPX_LINK_OTHER ""
 
+#define CTLCC_LIB_PATH "@CMAKE_BINARY_DIR@/ctlcc;@INSTALL_LIB_DIR@"
+#define CTLCC_LIBS "CtlCCDriver"
+#define CTLCC_LINK_OTHER ""
+
 #define CXX_BINARY "@CMAKE_CXX_COMPILER@"
 

@@ -651,13 +651,24 @@ CCommonLanguage::binaryOp( CodeLContext &ctxt, const CodeBinaryOpNode &v )
 	// operator precedence in CTL is same as C++, but we will have
 	// lost any parens during the parse stage, so we should
 	// introduce them all the time just in case
-	curStream() << '(';
+	bool needParens = true;
+	if ( ( v.leftOperand.is_subclass<UnaryOpNode>() ||
+		   v.leftOperand.is_subclass<NameNode>() ||
+		   v.leftOperand.is_subclass<LiteralNode>() ) &&
+		 ( v.rightOperand.is_subclass<UnaryOpNode>() ||
+		   v.rightOperand.is_subclass<NameNode>() ||
+		   v.rightOperand.is_subclass<LiteralNode>() ) )
+		needParens = false;
+	
+	if ( needParens )
+		curStream() << '(';
 	v.operandType->generateCastFrom( v.leftOperand, ctxt );
 	curStream() << ' ';
 	v.operandType->generateCode( const_cast<CodeBinaryOpNode *>( &v ), ctxt );
 	curStream() << ' ';
 	v.operandType->generateCastFrom( v.rightOperand, ctxt );
-	curStream() << ')';
+	if ( needParens )
+		curStream() << ')';
 }
 
 

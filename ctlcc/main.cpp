@@ -94,8 +94,8 @@ usageAndExit( const char *argv0, int rv )
 			  << "    -I <path>|--include=<path>       Add an include path to search for CTL modules\n"
 			  << "    -o <file>|--output=<file>        Send output to file\n"
 			  << "    --header=<file>                  Send header definition to file\n"
-			  << "    --threads                        Generate internal thread dispatch across all processors (default: off)\n"
 			  << "    -p [f|d|l]|--precision=[f|d|l]   Generates specified floating point precision (some routines may be decimated)\n"
+			  << "    --debug                          Leave output file (default: off)\n"
 			  << std::endl;
 
 	exit( rv );
@@ -191,11 +191,17 @@ addLibs( std::vector<std::string> &retval )
 	splitAndAdd( retval, ACESFILE_LIBS, ';', "-l", "lib" );
 	splitAndAdd( retval, ACESFILE_LINK_OTHER, ' ', std::string() );
 #endif
+	splitAndAdd( retval, CTLCC_LIB_PATH, ';', "-L" );
+	splitAndAdd( retval, CTLCC_LIBS, ';', "-l", "lib" );
+	splitAndAdd( retval, CTLCC_LINK_OTHER, ' ', std::string() );
+
 	splitAndAdd( retval, DPX_LIB_PATH, ';', "-L" );
+	splitAndAdd( retval, DPX_LIBS, ';', "-l", "lib" );
 	splitAndAdd( retval, DPX_LINK_OTHER, ' ', std::string() );
 	splitAndAdd( retval, ILMBASE_LIB_PATH, ';', "-L" );
-	splitAndAdd( retval, ILMBASE_LIBS, ';', "-L", "lib" );
+	splitAndAdd( retval, ILMBASE_LIBS, ';', "-l", "lib" );
 	splitAndAdd( retval, ILMBASE_LINK_OTHER, ' ', std::string() );
+
 }
 
 std::vector<std::string>
@@ -220,6 +226,7 @@ constructCompileLine( const std::string &compiler, const std::string &output, co
 int
 main( int argc, const char *argv[] )
 {
+	int retval = 0;
 	try
 	{
 		Ctl::CodeInterpreter interpreter;
@@ -232,8 +239,9 @@ main( int argc, const char *argv[] )
 
 		std::string outputFN;
 		std::string headerFN;
-		bool genThreads = false;
 		bool srcOnly = false;
+		bool debug = false;
+		bool compileDebug = false;
 
 		for ( int i = 1; i < argc; ++i )
 		{
@@ -242,6 +250,16 @@ main( int argc, const char *argv[] )
 				 strcmp( argv[i], "--help" ) == 0 )
 			{
 				usageAndExit( argv[0], 0 );
+			}
+			if ( strcmp( argv[i], "-g" ) == 0 )
+			{
+				compileDebug = true;
+				continue;
+			}
+			if ( strcmp( argv[i], "--debug" ) == 0 )
+			{
+				debug = true;
+				continue;
 			}
 
 			if ( strcmp( argv[i], "-c" ) == 0 || strcmp( argv[i], "--compile-only" ) == 0)
@@ -421,8 +439,13 @@ main( int argc, const char *argv[] )
 			modList.push_back( std::make_pair( module, filename ) );
 		}
 
-		interpreter.setModulePaths( modPaths );
+		if ( ! srcOnly && ! interpreter.isDriverEnabledForLanguage() )
+		{
+			std::cerr << "WARNING: Disabling driver generation, as it is not enabled for the specified output language" << std::endl;
+			srcOnly = true;
+		}
 
+		interpreter.setModulePaths( modPaths );
 		interpreter.initStdLibrary();
 
 		for ( size_t i = 0, N = modList.size(); i != N; ++i )
@@ -463,6 +486,10 @@ main( int argc, const char *argv[] )
 #endif
 			switch ( interpreter.getLanguage() )
 			{
+				case Ctl::CodeInterpreter::C89:
+				case Ctl::CodeInterpreter::C99:
+					tmpName << "/tmp/ctlcc_" << getpid() << ".c";
+					break;
 				case Ctl::CodeInterpreter::CPP03:
 				case Ctl::CodeInterpreter::CPP11:
 				case Ctl::CodeInterpreter::OPENCL:
@@ -471,12 +498,18 @@ main( int argc, const char *argv[] )
 				case Ctl::CodeInterpreter::CUDA:
 					tmpName << "/tmp/ctlcc_" << getpid() << ".cu";
 					break;
+				case Ctl::CodeInterpreter::GLSL:
+					tmpName << "/tmp/ctlcc_" << getpid() << ".glsl";
+					break;
 			}
 			std::string fn = tmpName.str();
 			std::ofstream output( fn.c_str() );
 			try
 			{
 				interpreter.emitCode( output );
+				interpreter.emitDriverCode( output );
+				output.close();
+
 				std::vector<std::string> cmdLine;
 				if ( interpreter.getLanguage() == Ctl::CodeInterpreter::CUDA )
 					cmdLine = constructCompileLine( "nvcc", outputFN, fn );
@@ -484,15 +517,37 @@ main( int argc, const char *argv[] )
 				{
 					cmdLine = constructCompileLine( CXX_BINARY, outputFN, fn );
 					if ( interpreter.getLanguage() == Ctl::CodeInterpreter::CPP11 )
+					{
 						cmdLine.insert( cmdLine.begin() + 1, 1, "--std=c++0x" );
+					}
+					if ( debug )
+						cmdLine.insert( cmdLine.begin() + 1, 1, "-g" );
+					{
+						
+					}
 				}
 
 				std::cout << "compile line: ";
+				std::string compileStr;
 				for ( size_t i = 0, N = cmdLine.size(); i != N; ++i )
+				{
+					if ( i > 0 )
+						compileStr.push_back( ' ' );
+					compileStr.append( cmdLine[i] );
 					std::cout << cmdLine[i] << ' ';
+				}
 				std::cout << std::endl;
 
-				::unlink( fn.c_str() );
+				if ( system( compileStr.c_str() ) != 0 )
+				{
+					std::cout << "ERROR compiling CTL driver" << std::endl;
+					retval = -1;
+				}
+
+				if ( debug )
+					std::cout << "Leaving temporary file '" << fn << "'" << std::endl;
+				else
+					::unlink( fn.c_str() );
 			}
 			catch ( ... )
 			{
@@ -507,5 +562,5 @@ main( int argc, const char *argv[] )
 		return -1;
 	}
 
-	return 0;
+	return retval;
 }

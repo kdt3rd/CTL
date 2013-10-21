@@ -63,6 +63,7 @@
 
 struct compression_t
 {
+	inline compression_t( void ) : exrCompressionScheme( -1 ) {}
 	inline compression_t( const char *n, int s ) : name( n ), exrCompressionScheme( s ) {}
 	std::string name;
 	int exrCompressionScheme;
@@ -96,6 +97,7 @@ struct format_t
 
 struct file_format_t
 {
+	explicit inline file_format_t( void ) {}
 	inline file_format_t( const char *n, const format_t &fmt ) : name( n ), output_fmt( fmt ) {}
 
 	std::string name;
@@ -103,6 +105,7 @@ struct file_format_t
 };
 
 const std::vector<file_format_t> &getAllowedFormats( void );
+file_format_t findFormatByName( const std::string &name );
 
 bool
 readImage( const std::string &filename, float scale,

@@ -62,6 +62,8 @@ public:
 	virtual bool supportsPrecision( Precision p ) const;
 	virtual std::string stdLibraryAndSetup( void );
 
+	virtual std::string getDriver( void );
+
 protected:
 	virtual bool usesFunctionInitializers( void ) const;
 	virtual bool supportsModuleDynamicInitialization( void ) const;

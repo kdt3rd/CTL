@@ -102,6 +102,16 @@ LanguageGenerator::getHeaderSuffix( void ) const
 ////////////////////////////////////////
 
 
+std::string
+LanguageGenerator::getDriver( void )
+{
+	return std::string();
+}
+
+
+////////////////////////////////////////
+
+
 void
 LanguageGenerator::addIndent( void )
 {

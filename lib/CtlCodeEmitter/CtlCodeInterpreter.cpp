@@ -156,6 +156,30 @@ CodeInterpreter::setLanguage( Language l )
 ////////////////////////////////////////
 
 
+bool
+CodeInterpreter::isDriverEnabledForLanguage( void ) const
+{
+	switch ( myLanguage )
+	{
+		case CPP03:
+		case CPP11:
+			return true;
+
+		case C89:
+		case C99:
+		case OPENCL:
+		case GLSL:
+		case CUDA:
+			break;
+	}
+
+	return false;
+}
+
+
+////////////////////////////////////////
+
+
 void
 CodeInterpreter::setPrecision( LanguageGenerator::Precision p )
 {
@@ -213,6 +237,7 @@ CodeInterpreter::emitCode( std::ostream &out )
 void
 CodeInterpreter::emitDriverCode( std::ostream &out )
 {
+	out << myLanguageGenerator->getDriver();
 }
 
 

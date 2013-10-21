@@ -510,6 +510,505 @@ CPPGenerator::stdLibraryAndSetup( void )
 ////////////////////////////////////////
 
 
+std::string
+CPPGenerator::getDriver( void )
+{
+	std::stringstream driver;
+
+	driver <<
+		"// Automatically generated driver code\n\n"
+		"#include <vector>\n"
+		"#include <string>\n"
+		"#include <stdexcept>\n"
+		"#include <dpx.hh>\n";
+	if ( myCPP11Mode )
+	{
+		
+		driver <<
+			"#include <thread>\n"
+			"#include <mutex>\n"
+			"#include <condition_variable>\n"
+			"\n"
+			"static std::condition_variable theWaitSemaphore;\n"
+			"static std::condition_variable theWorkSemaphore;\n"
+			"static size_t theFinishCount = 0;\n";
+	}
+	else
+	{
+		driver <<
+			"#ifdef WIN32\n"
+			"# error \"Need someone to implement semaphore (CreateSemaphore, etc.)\"\n"
+			"#endif\n"
+			"#include <semaphore.h>\n"
+			"#include <errno.h>\n"
+			"#include <pthread.h>\n"
+			"\n\n"
+			"class semaphore\n"
+			"{\n"
+			"public:\n"
+			"        semaphore( void ) {}\n"
+			"        ~semaphore( void ) { sem_destroy( &mySem ); }\n"
+			"\n"
+			"        void init( unsigned int init_count = 0 ) { if ( sem_init( &mySem, 0, init_count ) != 0 ) throw std::runtime_error( \"Unable to initialize semaphore\" ); }\n"
+			"        void shutdown( void ) { sem_destroy( &mySem ); }\n"
+			"        void post( void ) { if ( sem_post( &mySem ) != 0 ) throw std::runtime_error( \"Unable to post to semaphore\" ); }\n"
+			"\n"
+			"        void wait( void )\n"
+			"        {\n"
+			"                while ( sem_wait( &mySem ) != 0 )\n"
+			"                {\n"
+			"                        if ( errno == EINTR )\n"
+			"                                continue;\n"
+			"                        throw std::runtime_error( \"Error waiting on semaphore\" );\n"
+			"                }\n"
+			"        }\n"
+			"\n"
+			"private:\n"
+			"        sem_t mySem;\n"
+			"};\n"
+			"\n"
+			"static semaphore theWaitSemaphore;\n"
+			"static semaphore theWorkSemaphore;\n";
+	}
+
+	driver <<
+		"\n\n"
+		"typedef void(*dispatchFuncPtr)( int, int, ctl::dpx::fb<float> & );\n"
+		"static dispatchFuncPtr theWorkFunc = NULL;\n"
+		"static ctl::dpx::fb<float> *theWorkImage = NULL;\n"
+		"\n";
+
+	if ( myCPP11Mode )
+	{
+		driver <<
+			"static std::mutex theMutex;\n"
+			"static std::vector<std::thread> theThreads;\n"
+			"\n"
+			"void threadLoop( size_t i )\n"
+			"{\n"
+			"    while ( true )\n"
+			"    {\n"
+			"        dispatchFuncPtr curFunc = nullptr;\n"
+			"        ctl::dpx::fb<float> *curImg = nullptr;\n"
+			"        size_t nThreads = 1;\n"
+			"        {\n"
+			"            std::unique_lock<std::mutex> lk( theMutex );\n"
+			"            while ( ! theWorkFunc )\n"
+			"            {\n"
+			"                if ( theThreads.empty() ) return;\n"
+			"                theWorkSemaphore.wait( lk );\n"
+			"                if ( theThreads.empty() ) return;\n"
+			"                nThreads = theThreads.size();\n"
+			"            }\n"
+			"        }\n"
+			"        if ( curFunc && curImg )\n"
+			"        {\n"
+			"            size_t nPer = ( curImg->height() + nThreads - 1 ) / nThreads;\n"
+			"            int startY = nPer * i;\n"
+			"            int endY = nPer * (i + 1);\n"
+			"            if ( i == nThreads - 1 ) endY = curImg->height();\n"
+			"            (*curFunc)( startY, endY, *curImg );\n"
+			"            std::unique_lock<std::mutex> lk( theMutex );\n"
+			"            ++theFinishCount;\n"
+			"            theWorkSemaphore.notify_one();\n"
+			"        }\n"
+			"    }\n"
+			"}\n";
+	}
+	else
+	{
+		driver <<
+			"static pthread_mutex_t theMutex = PTHREAD_MUTEX_INITIALIZER;\n"
+			"static std::vector<pthread_t> theThreads;\n"
+			"\n"
+			"void *threadLoop( void *arg )\n"
+			"{\n"
+			"    size_t i = reinterpret_cast<size_t>( arg );\n"
+			"    while ( true )\n"
+			"    {\n"
+			"        dispatchFuncPtr curFunc = NULL;\n"
+			"        ctl::dpx::fb<float> *curImg = NULL;\n"
+			"        size_t nThreads = 1;\n"
+			"        {\n"
+			"            pthread_mutex_lock( &theMutex );\n"
+			"            while ( ! theWorkFunc )\n"
+			"            {\n"
+			"                if ( theThreads.empty() ) return NULL;\n"
+			"                pthread_mutex_unlock( &theMutex );\n"
+			"                theWorkSemaphore.wait();\n"
+			"                pthread_mutex_lock( &theMutex );\n"
+			"                if ( theThreads.empty() ) return NULL;\n"
+			"                nThreads = theThreads.size();\n"
+			"            }\n"
+			"            pthread_mutex_unlock( &theMutex );\n"
+			"        }\n"
+			"        if ( curFunc && curImg )\n"
+			"        {\n"
+			"            size_t nPer = ( curImg->height() + nThreads - 1 ) / nThreads;\n"
+			"            int startY = nPer * i;\n"
+			"            int endY = nPer * (i + 1);\n"
+			"            if ( i == nThreads - 1 ) endY = curImg->height();\n"
+			"            (*curFunc)( startY, endY, *curImg );\n"
+			"            theWorkSemaphore.post();\n"
+			"        }\n"
+			"    }\n"
+			"    return NULL;\n"
+			"}\n";
+	}
+	
+	driver <<
+		"\n"
+		"class Function\n"
+		"{\n"
+		"public:\n"
+		"	Function( void );\n"
+		"	virtual ~Function( void );\n"
+		"	virtual const std::string &getName( void ) const = 0;\n"
+		"	virtual const std::vector<std::string> &getArgumentFlags( void ) const = 0;\n"
+		"	virtual const std::vector<std::string> &getFloatArgs( void ) const = 0;\n"
+		"	virtual void setFlag( const std::string &flag ) const = 0;\n"
+		"	virtual void setArgument( const std::string &arg, double val ) const = 0;\n"
+		"	virtual void apply( ctl::dpx::fb<float> &pixels ) const = 0;\n"
+		"};\n"
+		"Function::Function( void ) {}\n"
+		"Function::~Function( void ) {}\n";
+	std::vector<std::string> funcClassPtrs;
+	for ( MainRoutineMap::const_iterator i = myMainRoutines.begin(); i != myMainRoutines.end(); ++i )
+	{
+		const std::string &name = i->first;
+		const std::string &nsName = i->second.first;
+		const SymbolInfoPtr &fnInfo = i->second.second;
+		FunctionTypePtr functionType = fnInfo->functionType();
+		const ParamVector &params = functionType->parameters();
+		std::vector<std::string> flags;
+		std::vector<std::string> fargs;
+		std::vector<std::string> inargs;
+		std::vector<std::string> inoutargs;
+		std::vector<std::string> outargs;
+		std::map<int, std::string> chanMapIn;
+		std::map<int, std::string> chanMapOut;
+		int maxCin = 0;
+		int maxCout = 0;
+		for ( size_t i = 0, N = params.size(); i != N; ++i )
+		{
+			const Param &parm = params[i];
+			if ( parm.varying )
+			{
+				if ( parm.access == RWA_READ )
+				{
+					inargs.push_back( parm.name );
+					chanMapIn[maxCin++] = parm.name;
+				}
+				if ( parm.access == RWA_WRITE )
+				{
+					outargs.push_back( parm.name );
+					chanMapOut[maxCout++] = parm.name;
+				}
+				if ( parm.access == RWA_READWRITE )
+				{
+					inoutargs.push_back( parm.name );
+					chanMapIn[maxCin++] = parm.name;
+					chanMapOut[maxCout++] = parm.name;
+				}
+
+				if ( parm.type->cDataType() != FloatTypeEnum )
+					throw std::logic_error( "Unhandled varying type" );
+				continue;
+			}
+
+			switch ( parm.type->cDataType() )
+			{
+				case FloatTypeEnum: fargs.push_back( parm.name ); break;
+				case BoolTypeEnum: flags.push_back( parm.name ); break;
+					break;
+				default:
+					throw std::logic_error( "Sorry, argument type to main function for argument '" + parm.name + "' not yet handled" );
+			}
+		}
+
+		if ( maxCin != maxCout )
+			throw std::logic_error( "Unhandled different number of image channels in and out" );
+
+		std::string cName = name + "_Function";
+		std::string varName = "the_" + cName;
+
+		for ( size_t i = 0; i != flags.size(); ++i )
+			driver << "static bool " << cName << "_" << flags[i] << "_flag = false;\n";
+		for ( size_t i = 0; i != fargs.size(); ++i )
+			driver << "static ctl_number_t " << cName << "_" << fargs[i] << "_number = 0;\n";
+
+		driver <<
+			"static void dispatch_" << name << "( int startY, int endY, ctl::dpx::fb<float> &pixels )\n"
+			"{\n"
+			"    float *img = pixels.ptr();\n"
+			"    int w = pixels.width();\n"
+			"    int c = pixels.depth();\n"
+			"    int linesize = w * c;\n"
+			"    img += startY * linesize;\n";
+		if ( ! inargs.empty() )
+		{
+			driver << "    ctl_number_t ";
+			for ( size_t i = 0; i != inargs.size(); ++i )
+			{
+				if ( i > 0 ) driver << ", ";
+				driver << inargs[i];
+			}
+			driver << ";\n";
+		}
+		if ( ! inoutargs.empty() )
+		{
+			driver << "    ctl_number_t ";
+			for ( size_t i = 0; i != inoutargs.size(); ++i )
+			{
+				if ( i > 0 ) driver << ", ";
+				driver << inargs[i];
+			}
+			driver << ";\n";
+		}
+		if ( ! outargs.empty() )
+		{
+			driver << "    ctl_number_t ";
+			for ( size_t i = 0; i != outargs.size(); ++i )
+			{
+				if ( i > 0 ) driver << ", ";
+				driver << outargs[i];
+			}
+			driver << ";\n";
+		}
+			
+		driver <<
+			"    switch ( c )\n"
+			"    {\n"
+			"        case 0: return;\n";
+		for ( int curC = 1; curC <= maxCin; ++curC )
+		{
+			driver << "        case " << curC << ":\n";
+			if ( curC == maxCin )
+				driver << "        default:\n";
+
+			driver <<
+				"            for ( int y = startY; y < endY; ++y )\n"
+				"                for ( int x = 0; x < w; ++x, img += c )\n"
+				"                {\n";
+			for ( int i = 0; i < curC; ++i )
+				driver << "                    " << chanMapIn[i] << " = img[" << i << "];\n";
+			for ( int i = curC; i < maxCin; ++i )
+				driver << "                    " << chanMapIn[i] << " = 0.0;\n";
+			driver << "                    " << nsName << "( ";
+			for ( size_t i = 0, N = params.size(); i != N; ++i )
+			{
+				if ( i > 0 ) driver << ", ";
+
+				const Param &parm = params[i];
+				if ( parm.varying )
+				{
+					driver << parm.name;
+					continue;
+				}
+				switch ( parm.type->cDataType() )
+				{
+					case FloatTypeEnum: driver << cName << "_" << parm.name << "_number"; break;
+					case BoolTypeEnum: driver << cName << "_" << parm.name << "_flag"; break;
+					default:
+						throw std::logic_error( "Sorry, argument type to main function for argument '" + parm.name + "' not yet handled" );
+				}
+			}
+			driver << " );\n";
+			for ( int i = 0; i < curC; ++i )
+				driver << "                    img[" << i << "] = " << chanMapOut[i] << ";\n";
+			driver <<
+				"                }\n"
+				"            break;\n";
+		}
+		driver <<
+			"    }\n"
+			"}\n";
+		driver <<
+			"class " << cName << " : public Function\n"
+			"{\n"
+			"public:\n"
+			"    " << cName << "( void ) : myName( \"" << name << "\" )\n"
+			"    {\n";
+		for ( size_t i = 0; i != flags.size(); ++i )
+			driver << "        myFlags.push_back( \"" << flags[i] << "\" );\n";
+		for ( size_t i = 0; i != fargs.size(); ++i )
+			driver << "        myFloatArgs.push_back( \"" << fargs[i] << "\" );\n";
+		driver <<
+			"    }\n"
+			"    virtual ~" << cName << "( void ) {}\n"
+			"    virtual const std::string &getName( void ) const { return myName; }\n"
+			"    virtual const std::vector<std::string> &getArgumentFlags( void ) const { return myFlags; }\n"
+			"    virtual const std::vector<std::string> &getFloatArgs( void ) const { return myFloatArgs; }\n"
+			"    virtual void setFlag( const std::string &flag ) const;\n"
+			"    virtual void setArgument( const std::string &arg, double val ) const;\n"
+			"    virtual void apply( ctl::dpx::fb<float> &pixels ) const;\n"
+			"private:\n"
+			"    std::string myName;\n"
+			"    std::vector<std::string> myFlags;\n"
+			"    std::vector<std::string> myFloatArgs;\n"
+			"};\n";
+		driver << "void\n" << cName <<
+			"::setFlag( const std::string &flag ) const\n"
+			"{\n";
+		for ( size_t i = 0; i != flags.size(); ++i )
+			driver << "    if ( flag == \"" << flags[i] << "\" ) " << cName << "_" << flags[i] << "_flag = true;\n";
+		driver <<
+			"}\n";
+		driver << "void\n" << cName <<
+			"::setArgument( const std::string &arg, double v ) const\n"
+			"{\n";
+		for ( size_t i = 0; i != fargs.size(); ++i )
+			driver << "    if ( arg == \"" << fargs[i] << "\" ) " << cName << "_" << flags[i] << "_number = v;\n";
+		driver <<
+			"}\n";
+
+		driver << "void\n" << cName <<
+			"::apply( ctl::dpx::fb<float> &pixels ) const\n"
+			"{\n";
+		if ( myCPP11Mode )
+		{
+			driver <<
+				"    std::unique_lock<std::mutex> lk( theMutex );\n"
+				"    if ( theThreads.empty() )\n"
+				"    {\n"
+				"        dispatch_" << name << "( 0, pixels.height(), pixels );\n"
+				"        return;\n"
+				"    }\n"
+				"    theWorkFunc = &dispatch_" << name << ";\n"
+				"    theWorkImage = &pixels;\n"
+				"    theFinishCount = 0;\n"
+				"    theWorkSemaphore.notify_all();\n"
+				"    size_t N = theThreads.size();\n"
+				"    while ( theFinishCount != N ) theWaitSemaphore.wait( lk );\n"
+				"    theWorkFunc = NULL;\n"
+				"    theWorkImage = NULL;\n";
+		}
+		else
+		{
+			driver <<
+				"    pthread_mutex_lock( &theMutex );\n"
+				"    if ( theThreads.empty() )\n"
+				"    {\n"
+				"        pthread_mutex_unlock( &theMutex );\n"
+				"        dispatch_" << name << "( 0, pixels.height(), pixels );\n"
+				"        return;\n"
+				"    }\n"
+				"    theWorkFunc = &dispatch_" << name << ";\n"
+				"    theWorkImage = &pixels;\n"
+				"    for ( size_t i = 0; i < theThreads.size(); ++i )\n"
+				"        theWorkSemaphore.post();\n"
+				"    pthread_mutex_unlock( &theMutex );\n"
+				"    for ( size_t i = 0; i < theThreads.size(); ++i )\n"
+				"        theWaitSemaphore.wait();\n"
+				"    pthread_mutex_lock( &theMutex );\n"
+				"    theWorkFunc = NULL;\n"
+				"    theWorkImage = NULL;\n";
+		}
+		driver << "}\n";
+		
+		driver << "static " << cName << ' ' << varName << ";\n";
+		funcClassPtrs.push_back( varName );
+	}
+	driver <<
+		"\n"
+		"class Driver\n"
+		"{\n"
+		"public:\n"
+		"	Driver( void );\n"
+		"	~Driver( void );\n"
+		"	bool usesThreads( void ) const;\n"
+		"	void init( int threads );\n"
+		"	void shutdown( void );\n"
+		"	const std::vector<Function *> &getFunctions( void );\n"
+		"};\n"
+		"Driver::Driver( void ) {}\n"
+		"Driver::~Driver( void ) { shutdown(); }\n"
+		"bool Driver::usesThreads( void ) const { return true; }\n"
+		"const std::vector<Function *> &Driver::getFunctions( void )\n"
+		"{\n"
+		"    static std::vector<Function *> theFuncs;\n"
+		"    if ( theFuncs.empty() )\n"
+		"    {\n";
+	for ( size_t i = 0; i != funcClassPtrs.size(); ++i )
+		driver << "        theFuncs.push_back( &" << funcClassPtrs[i] << " );\n";
+	driver <<
+		"    }\n"
+		"    return theFuncs;\n"
+		"}\n";
+
+	if ( myCPP11Mode )
+	{
+		driver <<
+			"void Driver::init( int nThreads )\n"
+			"{\n"
+			"    if ( nThreads < 0 )\n"
+			"        nThreads = std::thread::hardware_concurrency();\n"
+			"    if ( nThreads > 1 )\n"
+			"        theThreads.resize( nThreads );\n"
+			"    std::unique_lock<std::mutex> lk( theMutex );\n"
+			"    if ( ! theThreads.empty() )\n"
+			"    {\n"
+			"        for ( size_t i = 0, N = theThreads.size(); i != N; ++i )\n"
+			"            theThreads[i] = std::thread( &threadLoop, i );\n"
+			"    }\n"
+			"}\n"
+			"void Driver::shutdown( void )\n"
+			"{\n"
+			"    std::unique_lock<std::mutex> lk( theMutex );\n"
+			"    std::vector<std::thread> threads;\n"
+			"    std::swap( threads, theThreads );\n"
+			"    size_t N = threads.size();\n"
+			"    lk.unlock();\n"
+			"    theWorkSemaphore.notify_all();\n"
+			"    for ( size_t i = 0; i != N; ++i )\n"
+			"        threads[i].join();\n"
+			"}\n";
+	}
+	else
+	{
+		driver <<
+			"void Driver::init( int nThreads )\n"
+			"{\n"
+			"    theWorkSemaphore.init();\n"
+			"    theWaitSemaphore.init();\n"
+			"    if ( nThreads < 0 )\n"
+			"        nThreads = sysconf( _SC_NPROCESSORS_ONLN );\n"
+			"    if ( nThreads > 1 )\n"
+			"        theThreads.resize( nThreads );\n"
+			"    pthread_mutex_lock( &theMutex );\n"
+			"    if ( ! theThreads.empty() )\n"
+			"    {\n"
+			"        for ( size_t i = 0, N = theThreads.size(); i != N; ++i )\n"
+			"            pthread_create( &theThreads[i], NULL, &threadLoop, reinterpret_cast<void *>( i ) );\n"
+			"    }\n"
+			"    pthread_mutex_unlock( &theMutex );\n"
+			"}\n"
+			"void Driver::shutdown( void )\n"
+			"{\n"
+			"    pthread_mutex_lock( &theMutex );\n"
+			"    std::vector<pthread_t> threads;\n"
+			"    std::swap( threads, theThreads );\n"
+			"    size_t N = threads.size();\n"
+			"    pthread_mutex_unlock( &theMutex );\n"
+			"    for ( size_t i = 0; i != N; ++i )\n"
+			"        theWorkSemaphore.post();\n"
+			"    void *threadRet;\n"
+			"    for ( size_t i = 0; i != N; ++i )\n"
+			"        pthread_join( threads[i], &threadRet );\n"
+			"    theWorkSemaphore.shutdown();\n"
+			"    theWaitSemaphore.shutdown();\n"
+			"}\n";
+	}
+
+	driver << "Driver theDriver;\n";
+
+	return driver.str();
+}
+
+
+////////////////////////////////////////
+
+
 bool
 CPPGenerator::usesFunctionInitializers( void ) const
 {
