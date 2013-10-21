@@ -219,9 +219,9 @@ CCommonLanguage::module( CodeLContext &ctxt, const CodeModuleNode &m )
 		newlineAndIndent();
 	--myInModuleInit;
 
-	std::cout << "switch the module init struct to a check for supportsDynamicInitialization" << std::endl;
 	if ( ! myCurModuleInit.back().empty() )
 	{
+		std::cout << "switch the module init struct to a check for supportsDynamicInitialization" << std::endl;
 		const std::vector<std::string> &initVals = myCurModuleInit.back();
 
 		newlineAndIndent();
@@ -395,6 +395,30 @@ CCommonLanguage::function( CodeLContext &ctxt, const CodeFunctionNode &f )
 				  parm.access == RWA_WRITE || parm.access == RWA_READWRITE );
 
 		checkNeedsSizeArgument( parm.type, parm.name );
+
+		if ( parm.defaultValue )
+		{
+			NameNodePtr n = parm.defaultValue.cast<NameNode>();
+			if ( n )
+			{
+				NameNodePtr n = parm.defaultValue.cast<NameNode>();
+				NameNodePtr dName = n->info->value().cast<NameNode>();
+				std::string varVal;
+				if ( dName )
+				{
+					varVal = dName->name;
+				}
+				else
+				{
+					std::stringstream varDeclB;
+					pushStream( varDeclB );
+					n->info->value()->generateCode( ctxt );
+					popStream();
+					varVal = varDeclB.str();
+				}
+				myDefaultMappings[n->name] = varVal;
+			}
+		}
 	}
 	curStream() << " )";
 	pushBlock();
@@ -473,16 +497,8 @@ CCommonLanguage::variable( CodeLContext &ctxt, const CodeVariableNode &v )
 				myCurInitType = NONE;
 				popStream();
 				initVal = initB.str();
-				if ( initT == CTOR )
-				{
-					std::stringstream typeB;
-					pushStream( typeB );
-					variable( ctxt, std::string(), v.info->type(),
-							  false, false, false );
-					popStream();
-					initVal = typeB.str() + "( " + initVal + " )";
-				}
 			}
+
 			myDefaultMappings[varDecl] = initVal;
 			doEmit = false;
 		}
@@ -654,9 +670,11 @@ CCommonLanguage::binaryOp( CodeLContext &ctxt, const CodeBinaryOpNode &v )
 	bool needParens = true;
 	if ( ( v.leftOperand.is_subclass<UnaryOpNode>() ||
 		   v.leftOperand.is_subclass<NameNode>() ||
+		   v.leftOperand.is_subclass<CallNode>() ||
 		   v.leftOperand.is_subclass<LiteralNode>() ) &&
 		 ( v.rightOperand.is_subclass<UnaryOpNode>() ||
 		   v.rightOperand.is_subclass<NameNode>() ||
+		   v.rightOperand.is_subclass<CallNode>() ||
 		   v.rightOperand.is_subclass<LiteralNode>() ) )
 		needParens = false;
 	
@@ -997,7 +1015,11 @@ CCommonLanguage::call( CodeLContext &ctxt, const CodeCallNode &v )
 			std::map<std::string, std::string>::const_iterator found = myDefaultMappings.find( defVal );
 
 			if ( found != myDefaultMappings.end() )
-				curStream() << namesp << found->second;
+			{
+				if ( isalpha( found->second[0] ) )
+					curStream() << namesp;
+				curStream() << found->second;
+			}
 			else
 				curStream() << defVal;
 

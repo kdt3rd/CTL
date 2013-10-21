@@ -82,6 +82,9 @@
 # include <math.h>
 # include <alloca.h>
 #endif
+#include <fcntl.h>
+#include <iostream>
+#include <iomanip>
 
 static bool
 dpx_read( const std::string &name, float scale,
@@ -123,14 +126,26 @@ exr_read( const std::string &name, float scale,
 		  ctl::dpx::fb<float> &pixels, format_t &format)
 {
 	{
-		std::ifstream ins( name.c_str() );
+		int fd = open( name.c_str(), O_RDONLY );
+		if ( fd < 0 )
+			return false;
+
 		unsigned int magic, endian;
 
-		ins.open( name.c_str() );
-
-		ins.read( (char *)&magic, sizeof(magic) );
-		if ( magic != 0x01312f76 )
+		ssize_t nRead = read( fd, &magic, sizeof(magic) );
+		if ( nRead != sizeof(magic) )
+		{
+			close( fd );
 			return false;
+		}
+
+		close( fd );
+
+		if ( magic != 0x01312f76 )
+		{
+			std::cout << "exr magic doesn't match: 0x" << std::setw( 8 ) << std::hex << magic << std::dec << " vs 0x01312f76" << std::endl;
+			return false;
+		}
 	}
 	
 	Imf::InputFile file( name.c_str() );

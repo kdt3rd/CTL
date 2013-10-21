@@ -520,11 +520,8 @@ main( int argc, const char *argv[] )
 					{
 						cmdLine.insert( cmdLine.begin() + 1, 1, "--std=c++0x" );
 					}
-					if ( debug )
+					if ( compileDebug )
 						cmdLine.insert( cmdLine.begin() + 1, 1, "-g" );
-					{
-						
-					}
 				}
 
 				std::cout << "compile line: ";

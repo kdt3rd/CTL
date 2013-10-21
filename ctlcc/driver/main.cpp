@@ -52,12 +52,14 @@
 // THAN A.M.P.A.S., WHETHER DISCLOSED OR UNDISCLOSED.
 ///////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 #include <vector>
 #include <string>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sys/time.h>
+#include <iostream>
+#include <iomanip>
 
 #include "file_io.h"
 
@@ -215,7 +217,7 @@ exists( const std::string &f )
 	return false;
 }
 
-std::string
+static std::string
 basename( const std::string &path )
 {
     std::string::size_type lastPos = path.rfind( '/' );
@@ -231,8 +233,32 @@ basename( const std::string &path )
     return path;
 }
 
-int
-main( int argc, char *argv[] )
+static std::string
+extension( const std::string &path )
+{
+    std::string::size_type lastPos = path.rfind( '.' );
+
+    if ( lastPos != std::string::npos )
+        return path.substr( lastPos + 1 );
+
+    return std::string();
+}
+
+static void
+reportTime( const char *tag, const struct timeval &start, const struct timeval &end )
+{
+	int64_t sec = int64_t(end.tv_sec) - int64_t(start.tv_sec);
+	int64_t usec = int64_t(end.tv_usec) - int64_t(start.tv_usec);
+	if ( usec < 0 )
+	{
+		usec += 1000000;
+		sec -= 1;
+	}
+	std::cout << " (" << tag << ": " << sec << "." << std::setw(7) << std::setfill( '0' ) << usec << " secs)";
+}
+
+static int
+safeMain( int argc, char *argv[] )
 {
 	kEnableThreads = theDriver.usesThreads();
 
@@ -256,7 +282,7 @@ main( int argc, char *argv[] )
 	bool force = false;
 	int nThreads = -1;
 	bool stopOnErrors = true;
-	for ( int c = 0; c < argc; ++c )
+	for ( int c = 1; c < argc; ++c )
 	{
 		const char *curArg = argv[c];
 		bool hasDash = false;
@@ -311,12 +337,21 @@ main( int argc, char *argv[] )
 					usageAndExit();
 				}
 
-				
+				continue;
 			}
 		}
 
 		if ( arg == "skip-errors" )
+		{
 			stopOnErrors = false;
+			continue;
+		}
+
+		if ( arg == "force" )
+		{
+			force = true;
+			continue;
+		}
 
 		if ( arg == "in_scale" )
 		{
@@ -344,6 +379,7 @@ main( int argc, char *argv[] )
 				std::cerr << "ERROR: Unknown format tag specified\n" << std::endl;
 				usageAndExit();
 			}
+			continue;
 		}
 
 		if ( arg == "compression" )
@@ -360,6 +396,7 @@ main( int argc, char *argv[] )
 				std::cerr << "ERROR: Unknown compression name specified\n" << std::endl;
 				usageAndExit();
 			}
+			continue;
 		}
 
 		if ( arg == "f" || arg == "func" || arg == "function" )
@@ -416,6 +453,10 @@ main( int argc, char *argv[] )
 				}
 			}
 		}
+
+		if ( foundFuncArg )
+			continue;
+
 		std::cerr << "ERROR: Unknown argument '" << argv[c] << "'\n" << std::endl;
 		usageAndExit();
 	}
@@ -477,14 +518,23 @@ main( int argc, char *argv[] )
 	for ( size_t f = 0; f != filePairs.size(); ++f )
 	{
 		const std::string &inPath = filePairs[f].first;
-		const std::string &outPath = filePairs[f].first;
+		const std::string &outPath = filePairs[f].second;
 
+		struct timeval startTime, readTime, writeTime, procTime;
 		format_t curFmt;
+		gettimeofday( &startTime, NULL );
 		if ( readImage( inPath, inScale, pixels, curFmt ) )
 		{
+			gettimeofday( &readTime, NULL );
 			theFunc.apply( pixels );
+			gettimeofday( &procTime, NULL );
 			if ( ! outFmt.name.empty() )
 				curFmt = outFmt.output_fmt;
+			else
+			{
+				curFmt.ext = extension( inPath );
+				curFmt.bps = curFmt.src_bps;
+			}
 
 			if ( ! writeImage( outPath, outScale, pixels, curFmt, outComp ) )
 			{
@@ -496,7 +546,13 @@ main( int argc, char *argv[] )
 			}
 			else
 			{
-				std::cout << "Processing '" << inPath << "' -> '" << outPath << "' complete.\n";
+				gettimeofday( &writeTime, NULL );
+				std::cout << inPath << " ==> " << outPath << ":";
+				reportTime( "Read", startTime, readTime );
+				reportTime( "Process", readTime, procTime );
+				reportTime( "Write", procTime, writeTime );
+				reportTime( "Total", startTime, writeTime );
+				std::cout << std::endl;
 			}
 		}
 		else if ( stopOnErrors )
@@ -509,4 +565,20 @@ main( int argc, char *argv[] )
 	theDriver.shutdown();
 	std::cout << "Finished!" << std::endl;
 	return 0;
+}
+
+int
+main( int argc, char *argv[] )
+{
+	int retval = 0;
+	try
+	{
+		retval = safeMain( argc, argv );
+	}
+	catch ( std::exception &e )
+	{
+		std::cerr << "ERROR: " << e.what() << std::endl;
+		retval = -1;
+	}
+	return retval;
 }
