@@ -83,6 +83,7 @@
 # include <alloca.h>
 #endif
 #include <fcntl.h>
+#include <unistd.h>
 #include <iostream>
 #include <iomanip>
 
