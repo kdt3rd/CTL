@@ -81,13 +81,15 @@ public:
 	CCommonLanguage( void );
 	virtual ~CCommonLanguage( void );
 
-	virtual std::string getHeaderCode( void );
-	virtual std::string getCode( void );
+	virtual void initStdLibrary( void );
+
+	virtual std::string getHeaderCode( bool calledOnly );
+	virtual std::string getCode( bool calledOnly );
 
 	// Chunk of text that defines the standard CTL library
 	// types and functions, as well as includes andy
 	// language-specific includes
-	virtual std::string stdLibraryAndSetup( void ) = 0;
+	virtual std::string stdLibraryAndSetup( void );
 
 	virtual void pushBlock( void );
 	virtual void popBlock( void );
@@ -125,6 +127,85 @@ public:
 	virtual void emitToken( Token t );
 
 protected:
+	struct ModuleUsage
+	{
+		std::set<std::string> types;
+		std::set<std::string> functions;
+		std::set<std::string> variables;
+	};
+	typedef std::map<const Module *, ModuleUsage> ModuleUsageMap;
+
+	struct TypeDefinition
+	{
+		inline TypeDefinition( void ) : emit( false ) {}
+		inline TypeDefinition( const std::string &n, const std::string &d, const std::string &c = std::string() ) : name( n ), declare( d ), constfunc( c ), emit( false ) {}
+		std::string name;
+		std::string declare;
+		std::string constfunc;
+		ModuleUsageMap moduleUsage;
+		bool emit;
+	};
+
+	struct GlobalVariableDefinition
+	{
+		inline GlobalVariableDefinition( void ) : emit( false ), module( NULL ) {}
+		const Module *module;
+		std::string name;
+		std::string declare;
+		std::string delayedInit;
+		ModuleUsageMap moduleUsage;
+		bool emit;
+	};
+
+	struct FunctionDefinition
+	{
+		inline FunctionDefinition( void ) : emit( false ), emitForward( false ) {}
+		inline FunctionDefinition( const std::string &n, const std::string &b ) : name( n ), body( b ), emit( false ), emitForward( false ) {}
+		std::string name;
+		std::string header;
+		std::string forwardDecl;
+		std::string body;
+		ModuleUsageMap moduleUsage;
+		bool emit;
+		bool emitForward;
+	};
+	typedef std::vector<FunctionDefinition> FuncDeclList;
+
+	struct ModuleDefinition
+	{
+		inline ModuleDefinition( void ) : module( NULL ) {}
+
+		const Module *module;
+		std::string name;
+		std::string call_prefix;
+		std::string prefix;
+		std::string suffix;
+		std::vector<TypeDefinition> types;
+		std::vector<GlobalVariableDefinition> variables;
+		FuncDeclList functions;
+		std::string headerCode;
+		std::string typeCode;
+		std::string fwdCode;
+		std::string varCode;
+		std::string funCode;
+		std::string initCode;
+	};
+
+	virtual void outputInitCode( const std::string &modName, const std::string &initCode );
+	virtual void recurseUsage( const std::map<const Module *, size_t> &indexmap, ModuleUsageMap &uMap, const Module *curModule = NULL );
+	virtual void traverseAndEmit( const std::map<const Module *, size_t> &indexmap, TypeDefinition &t );
+	virtual void traverseAndEmit( const std::map<const Module *, size_t> &indexmap, GlobalVariableDefinition &glob );
+	virtual void traverseAndEmit( const std::map<const Module *, size_t> &indexmap, FunctionDefinition &func, bool fwdOnly = false );
+
+	virtual void addStandardIncludes( void );
+	virtual void initStandardLibraryBodies( ModuleDefinition &m );
+	virtual void defineStandardTypes( std::vector<TypeDefinition> &types, const std::string &funcPref, const std::string &precSuffix );
+	virtual void getStandardMathBodies( FuncDeclList &d, const std::string &funcPref, const std::string &precSuffix );
+	virtual void getStandardHalfBodies( FuncDeclList &d, const std::string &funcPref, const std::string &precSuffix );
+	virtual void getStandardPrintBodies( FuncDeclList &d, const std::string &funcPref, const std::string &precSuffix );
+	virtual void getStandardColorBodies( FuncDeclList &d, const std::string &funcPref, const std::string &precSuffix );
+	virtual void getStandardInterpBodies( FuncDeclList &d, const std::string &funcPref, const std::string &precSuffix );
+
 	/// Should return true if we might have to initialize stuff
 	/// in a function (pretty much everything except c++11)
 	virtual bool usesFunctionInitializers( void ) const = 0;
@@ -133,14 +214,16 @@ protected:
 	virtual bool supportsModuleDynamicInitialization( void ) const = 0;
 	virtual bool supportsNamespaces( void ) const = 0;
 	virtual bool supportsHalfType( void ) const = 0;
+	virtual bool supportsReferences( void ) const = 0;
+	virtual bool supportsStructOperators( void ) const = 0;
+	virtual bool needsStructTypedefs( void ) const = 0;
+
 	virtual std::string constructNamespaceTag( const std::string &modName ) = 0;
 	virtual const std::string &getInlineKeyword( void ) const = 0;
 	/// @brief function prefix prior to declaring a non-main function
 	virtual const std::string &getFunctionPrefix( void ) const = 0;
 	/// @brief prefix prior to declaring a 'global' variable (might be in namespace)
 	virtual const std::string &getGlobalPrefix( void ) const = 0;
-	/// @brief 'namespace' for built-in ctl functions
-	virtual const std::string &getCTLNamespaceTag( void ) const = 0;
 	/// @brief return the type name for a boolean type
 	virtual const std::string &getBoolTypeName( void ) const = 0;
 	/// @brief return the literal string a boolean value
@@ -148,6 +231,12 @@ protected:
 	/// @brief return the literal string to tag a value as const
 	virtual const std::string &getConstLiteral( void ) const = 0;
 	virtual void startCast( const char *type ) = 0;
+
+	virtual const std::string &beginComment( void ) const = 0;
+	virtual const std::string &beginCommentLine( void ) const = 0;
+	virtual const std::string &endComment( void ) const = 0;
+
+//	virtual void emitStdFunction( const std::string &name ) = 0;
 
 	enum InitType
 	{
@@ -163,9 +252,12 @@ protected:
 							   bool isSubItem = false );
 	virtual InitType variable( CodeLContext &ctxt,
 							   const std::string &name, const DataTypePtr &t,
-							   bool isConst, bool isInput, bool isWritable );
-	virtual void doInit( InitType initT, CodeLContext &ctxt,
-						 const ExprNodePtr &initV, const std::string &varName );
+							   bool isConst, bool isInput, bool isWritable,
+							   bool isGlobal );
+	virtual std::string doInit( InitType initT, CodeLContext &ctxt,
+								const DataTypePtr &t,
+								const ExprNodePtr &initV,
+								const std::string &varName );
 	virtual void replaceInit( std::string &initS, const std::string &name );
 
 	virtual bool checkNeedInitInModuleInit( const ExprNodePtr &initV,
@@ -183,35 +275,49 @@ protected:
 									const DataTypePtr &funcParm,
 									CodeLContext &ctxt );
 
-	typedef std::pair<std::vector<int>, std::string> ArrayInfo;
+	struct ArrayInfo
+	{
+		std::vector<int> sizes;
+		std::string type;
+		std::string maker;
+		bool isCore;
+	};
+
 	// NB: The RcPtr type doesn't work for an array container, guess
 	// it doesn't implement the less than operator in a std::container
 	// kind of way, so we use the bare pointer...
-	typedef std::map<const ArrayType *, ArrayInfo> ArrayInfoContainer;
-	const ArrayInfo &collapseArray( const ArrayType *arrPtr );
+	typedef std::map<const ArrayType *, std::pair<ArrayTypePtr, ArrayInfo> > ArrayInfoContainer;
+	const ArrayInfo &collapseArray( const ArrayTypePtr &arrPtr );
 
 	Module *myCurModule;
 	std::string myCurModuleName;
 	std::string myModPrefix;
 	std::map<const Module *, std::string> myNamespaceTags;
 
-	std::stringstream myCodeStream;
-	std::stringstream myHeaderStream;
 	int myInElse;
-	int myInModuleInit;
 	int myInFunction;
+	int myInModuleInit;
 	int myDoForwardDecl;
+	int myExprLevel;
 	InitType myCurInitType;
 	std::map<std::string, InitType> myGlobalInitType;
 	std::map<std::string, std::string> myGlobalLiterals;
 	std::map<std::string, std::string> myDefaultMappings;
-	std::vector< std::vector<std::string> > myCurModuleInit;
-	std::set<std::string> myStdFuncsUsed;
+	std::set<std::string> myCurOutputVars;
+
 	ArrayInfoContainer myArrayTypes;
 	// functions that can't be inline...
 	std::set<std::string> myFuncsUsedInInit;
 	std::set<std::string> myGlobalVariables;
 	std::stringstream myForwardDecl;
+	std::set<std::string> myStdFunctionsCalled;
+	std::map<std::string, std::string> myStdMathFuncs;
+	std::map<std::string, std::string> myStdNames;
+
+	ModuleDefinition *myCurModuleDefinition;
+	ModuleUsageMap *myCurModuleUsage;
+	std::vector<ModuleDefinition> myModules;
+	std::stringstream *myCurInitDestination;
 };
 
 } // namespace CtlCodeEmitter

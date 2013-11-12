@@ -70,6 +70,15 @@ LanguageGenerator::~LanguageGenerator( void )
 
 
 void
+LanguageGenerator::initStdLibrary( void )
+{
+}
+
+
+////////////////////////////////////////
+
+
+void
 LanguageGenerator::setPrecision( Precision p )
 {
 	if ( ! supportsPrecision( p ) )
@@ -289,6 +298,23 @@ LanguageGenerator::getPrecisionType( void ) const
 	}
 
 	return std::string( "unknown" );
+}
+
+
+////////////////////////////////////////
+
+
+std::string
+LanguageGenerator::getPrecisionTypeSuffix( void ) const
+{
+	switch ( myPrecision )
+	{
+		case FLOAT: return std::string( "F" );
+		case LONG_DOUBLE: return std::string( "L" );
+		case DOUBLE: break;
+	}
+
+	return std::string();
 }
 
 

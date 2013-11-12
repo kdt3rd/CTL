@@ -254,7 +254,7 @@ reportTime( const char *tag, const struct timeval &start, const struct timeval &
 		usec += 1000000;
 		sec -= 1;
 	}
-	std::cout << " (" << tag << ": " << sec << "." << std::setw(7) << std::setfill( '0' ) << usec << " secs)";
+	std::cout << " (" << tag << ": " << sec << "." << std::setw(6) << std::setfill( '0' ) << usec << " secs)";
 }
 
 static int

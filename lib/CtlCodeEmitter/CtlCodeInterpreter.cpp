@@ -61,6 +61,7 @@
 #include "CtlCodeCPPLanguage.h"
 #include "CtlCodeCUDALanguage.h"
 #include "CtlCodeOPENCLLanguage.h"
+#include "CtlCodeNukeLanguage.h"
 
 #include <cassert>
 #include <sstream>
@@ -73,7 +74,8 @@ namespace Ctl {
 
 
 CodeInterpreter::CodeInterpreter( void )
-		: Interpreter(), myLanguage( CPP03 ), myLanguageGenerator( NULL )
+		: Interpreter(), myLanguage( CPP03 ), myLanguageGenerator( NULL ),
+		  myCalledOnly( false )
 {
 	myLanguageGenerator = new CPPGenerator( false );
 }
@@ -148,6 +150,9 @@ CodeInterpreter::setLanguage( Language l )
 		case CUDA:
 			myLanguageGenerator = new CUDAGenerator;
 			break;
+		case NUKE:
+			myLanguageGenerator = new NukeGenerator;
+			break;
 	}
 	myLanguageGenerator->setPrecision( curPrec );
 }
@@ -163,6 +168,9 @@ CodeInterpreter::isDriverEnabledForLanguage( void ) const
 	{
 		case CPP03:
 		case CPP11:
+			return true;
+
+		case NUKE:
 			return true;
 
 		case C89:
@@ -204,6 +212,7 @@ CodeInterpreter::initStdLibrary( void )
     CodeLContext lcontext( *myLanguageGenerator, file, &module, symtab() );
 
     declareCodeStdLibrary( lcontext );
+	myLanguageGenerator->initStdLibrary();
 }
 
 
@@ -214,7 +223,7 @@ void
 CodeInterpreter::emitHeader( std::ostream &out )
 {
 	out << myLanguageGenerator->getHeaderPrefix()
-		<< myLanguageGenerator->getHeaderCode()
+		<< myLanguageGenerator->getHeaderCode( myCalledOnly )
 		<< myLanguageGenerator->getHeaderSuffix()
 		<< std::endl;
 }
@@ -227,7 +236,7 @@ void
 CodeInterpreter::emitCode( std::ostream &out )
 {
 	out << myLanguageGenerator->stdLibraryAndSetup()
-		<< myLanguageGenerator->getCode();
+		<< myLanguageGenerator->getCode( myCalledOnly );
 }
 
 

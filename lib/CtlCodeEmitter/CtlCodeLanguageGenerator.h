@@ -75,6 +75,9 @@ public:
 	LanguageGenerator( void );
 	virtual ~LanguageGenerator( void );
 
+	// Any additional setup necessary during std library init
+	virtual void initStdLibrary( void );
+
 	// Needs to be called before the init stuff is called
 	// or any modules are parsed
 	virtual bool supportsPrecision( Precision p ) const = 0;
@@ -87,7 +90,7 @@ public:
 	virtual std::string getHeaderPrefix( void ) const;
 	// Should just be the setup code (i.e. forward decls
 	// for functions in C)
-	virtual std::string getHeaderCode( void ) = 0;
+	virtual std::string getHeaderCode( bool calledOnly ) = 0;
 	// any necessary cleanup i.e. ifdef __cplusplus stuff
 	virtual std::string getHeaderSuffix( void ) const;
 
@@ -96,7 +99,7 @@ public:
 	virtual std::string stdLibraryAndSetup( void ) = 0;
 
 	// Returns the body of code
-	virtual std::string getCode( void ) = 0;
+	virtual std::string getCode( bool calledOnly ) = 0;
 
 	virtual std::string getDriver( void );
 
@@ -155,8 +158,9 @@ protected:
 	std::string escapeLiteral( const std::string &s );
 	std::string removeNSQuals( const std::string &x );
 
-	std::string getPrecisionFunctionSuffix( void ) const;
-	std::string getPrecisionType( void ) const;
+	virtual std::string getPrecisionFunctionSuffix( void ) const;
+	virtual std::string getPrecisionType( void ) const;
+	virtual std::string getPrecisionTypeSuffix( void ) const;
 
 	void registerMainRoutine( const std::string &name, const std::string &nsName,
 							  const SymbolInfoPtr &fnInfo );

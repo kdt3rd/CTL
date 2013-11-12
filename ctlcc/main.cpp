@@ -79,6 +79,7 @@ emitAvailableLangs( std::ostream &os )
 	   << "  cuda   CUDA compatible code\n"
 	   << "  opencl OpenCL compatible code\n"
 	   << "  glsl   GLSL compatible shader code\n"
+	   << "  nuke   Same as C++, but generates Nuke PixelIop driver code\n"
 	   << std::endl;
 }
 
@@ -96,6 +97,7 @@ usageAndExit( const char *argv0, int rv )
 			  << "    --header=<file>                  Send header definition to file\n"
 			  << "    -p [f|d|l]|--precision=[f|d|l]   Generates specified floating point precision (some routines may be decimated)\n"
 			  << "    --debug                          Leave output file (default: off)\n"
+			  << "    --all-code                       By default, only outputs used functions / code. This outputs everything\n"
 			  << std::endl;
 
 	exit( rv );
@@ -242,6 +244,7 @@ main( int argc, const char *argv[] )
 		bool srcOnly = false;
 		bool debug = false;
 		bool compileDebug = false;
+		bool allCode = false;
 
 		for ( int i = 1; i < argc; ++i )
 		{
@@ -259,6 +262,12 @@ main( int argc, const char *argv[] )
 			if ( strcmp( argv[i], "--debug" ) == 0 )
 			{
 				debug = true;
+				continue;
+			}
+
+			if ( strcmp( argv[i], "--all-code" ) == 0 )
+			{
+				allCode = true;
 				continue;
 			}
 
@@ -352,6 +361,8 @@ main( int argc, const char *argv[] )
 						interpreter.setLanguage( Ctl::CodeInterpreter::OPENCL );
 					else if ( lang == "cuda" )
 						interpreter.setLanguage( Ctl::CodeInterpreter::CUDA );
+					else if ( lang == "nuke" )
+						interpreter.setLanguage( Ctl::CodeInterpreter::NUKE );
 					else
 					{
 						std::cerr << "Sorry, language ID '" << lang << "' is not available.\nPlease check the argument spelling. The available language IDs are as follows:\n" << std::endl;
@@ -446,6 +457,7 @@ main( int argc, const char *argv[] )
 		}
 
 		interpreter.setModulePaths( modPaths );
+		interpreter.setCalledOnly( ! allCode );
 		interpreter.initStdLibrary();
 
 		for ( size_t i = 0, N = modList.size(); i != N; ++i )
@@ -477,6 +489,8 @@ main( int argc, const char *argv[] )
 					usageAndExit( argv[0] );
 				}
 				outputFN = getRoot( modList.front().second );
+				if ( interpreter.getLanguage() == Ctl::CodeInterpreter::NUKE )
+					outputFN += ".nuke.cpp";
 			}
 
 			std::stringstream tmpName;
@@ -501,14 +515,25 @@ main( int argc, const char *argv[] )
 				case Ctl::CodeInterpreter::GLSL:
 					tmpName << "/tmp/ctlcc_" << getpid() << ".glsl";
 					break;
+				case Ctl::CodeInterpreter::NUKE:
+					break;
 			}
 			std::string fn = tmpName.str();
+			if ( interpreter.getLanguage() == Ctl::CodeInterpreter::NUKE )
+				fn = outputFN;
+
 			std::ofstream output( fn.c_str() );
 			try
 			{
 				interpreter.emitCode( output );
 				interpreter.emitDriverCode( output );
 				output.close();
+
+				if ( interpreter.getLanguage() == Ctl::CodeInterpreter::NUKE )
+				{
+					std::cout << "WARNING: Don't yet know how to compile Nuke plugins directly, emitting code to: " << outputFN << "\nPlease compile yourself..." << std::endl;
+					return retval;
+				}
 
 				std::vector<std::string> cmdLine;
 				if ( interpreter.getLanguage() == Ctl::CodeInterpreter::CUDA )

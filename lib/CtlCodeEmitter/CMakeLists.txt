@@ -17,6 +17,7 @@ add_library( CtlCodeEmitter ${DO_SHARED}
 	CtlCodeCPPLanguage.cpp
 	CtlCodeCUDALanguage.cpp
 	CtlCodeOPENCLLanguage.cpp
+	CtlCodeNukeLanguage.cpp
 )
 
 target_link_libraries( CtlCodeEmitter IlmCtlMath IlmCtl )

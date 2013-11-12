@@ -52,7 +52,7 @@ namespace Ctl
 {
 
 CUDAGenerator::CUDAGenerator( void )
-		: CCommonLanguage()
+		: CPPGenerator()
 {
 }
 
@@ -87,11 +87,23 @@ CUDAGenerator::supportsPrecision( Precision p ) const
 
 
 std::string
-CUDAGenerator::stdLibraryAndSetup( void )
+CUDAGenerator::getDriver( void )
 {
 	std::stringstream retval;
 
 	return retval.str();
+}
+
+
+////////////////////////////////////////
+
+
+void
+CUDAGenerator::getStandardPrintBodies( FuncDeclList &d, const std::string &funcPref, const std::string &precSuffix )
+{
+	// just get the default ones, not the c++ ones so we have nothing,
+	// at least for now
+	CCommonLanguage::getStandardPrintBodies( d, funcPref, precSuffix );
 }
 
 

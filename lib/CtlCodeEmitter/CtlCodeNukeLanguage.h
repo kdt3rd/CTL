@@ -45,46 +45,23 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef INCLUDED_CTL_CODE_CUDA_LANGUAGE_H
-#define INCLUDED_CTL_CODE_CUDA_LANGUAGE_H
+#ifndef INCLUDED_CTL_CODE_NUKE_LANGUAGE_H
+#define INCLUDED_CTL_CODE_NUKE_LANGUAGE_H
 
 #include "CtlCodeCPPLanguage.h"
 
 namespace Ctl
 {
 
-// largely the same, init code is different,
-// function keywords added.
-// Boiler plate for kernel buffer loops different
-class CUDAGenerator : public CPPGenerator
+class NukeGenerator : public CPPGenerator
 {
 public:
-	CUDAGenerator( void );
-	virtual ~CUDAGenerator( void );
-
-	virtual bool supportsPrecision( Precision p ) const;
+	NukeGenerator( void );
+	virtual ~NukeGenerator( void );
 
 	virtual std::string getDriver( void );
-protected:
-	virtual void getStandardPrintBodies( FuncDeclList &d, const std::string &funcPref, const std::string &precSuffix );
-
-	virtual bool usesFunctionInitializers( void ) const;
-	virtual bool supportsModuleDynamicInitialization( void ) const;
-	virtual bool supportsNamespaces( void ) const;
-	virtual bool supportsHalfType( void ) const;
-
-	virtual std::string constructNamespaceTag( const std::string &modName );
-	virtual const std::string &getInlineKeyword( void ) const;
-	virtual const std::string &getFunctionPrefix( void ) const;
-	virtual const std::string &getGlobalPrefix( void ) const;
-	virtual const std::string &getCTLNamespaceTag( void ) const;
-	virtual const std::string &getBoolTypeName( void ) const;
-	virtual const std::string &getBoolLiteral( bool v ) const;
-	virtual const std::string &getConstLiteral( void ) const;
-	virtual void startCast( const char *type );
-
 };
 
-} // namespace Ctl
+}
 
-#endif // INCLUDED_CTL_CODE_CUDA_LANGUAGE_H
+#endif // INCLUDED_CTL_CODE_NUKE_LANGUAGE_H

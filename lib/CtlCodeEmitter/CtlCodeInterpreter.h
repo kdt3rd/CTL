@@ -75,7 +75,8 @@ public:
 		CPP11,
 		OPENCL,
 		CUDA,
-		GLSL
+		GLSL,
+		NUKE
 	};
 
     CodeInterpreter( void );
@@ -97,7 +98,12 @@ public:
 	// the correct code is generated and so the types
 	// are available to the parser in the symbol table
 	void initStdLibrary( void );
-	
+
+	// if set to true, set the interpreter to only emit functions that
+	// are called from the 'main' routine(s)
+	inline void setCalledOnly( bool on_off ) { myCalledOnly = on_off; }
+	inline bool isCalledOnly( void ) const { return myCalledOnly; }
+
 	// emits function definitions suitable for
 	// compiling the generated code into a library
 	// if appropriate for the language
@@ -122,6 +128,7 @@ private:
 
 	Language myLanguage;
 	LanguageGenerator *myLanguageGenerator;
+	bool myCalledOnly;
 };
 
 } // namespace Ctl

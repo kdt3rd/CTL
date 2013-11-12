@@ -60,25 +60,34 @@ public:
 	virtual ~CPPGenerator( void );
 
 	virtual bool supportsPrecision( Precision p ) const;
-	virtual std::string stdLibraryAndSetup( void );
 
 	virtual std::string getDriver( void );
 
 protected:
+	virtual void addStandardIncludes( void );
+	virtual void defineStandardTypes( std::vector<TypeDefinition> &types, const std::string &funcPref, const std::string & precSuffix );
+	virtual void getStandardPrintBodies( FuncDeclList &d, const std::string &funcPref, const std::string &precSuffix );
+
 	virtual bool usesFunctionInitializers( void ) const;
 	virtual bool supportsModuleDynamicInitialization( void ) const;
 	virtual bool supportsNamespaces( void ) const;
 	virtual bool supportsHalfType( void ) const;
+	virtual bool supportsReferences( void ) const;
+	virtual bool supportsStructOperators( void ) const;
+	virtual bool needsStructTypedefs( void ) const;
 
 	virtual std::string constructNamespaceTag( const std::string &modName );
 	virtual const std::string &getInlineKeyword( void ) const;
 	virtual const std::string &getFunctionPrefix( void ) const;
 	virtual const std::string &getGlobalPrefix( void ) const;
-	virtual const std::string &getCTLNamespaceTag( void ) const;
 	virtual const std::string &getBoolTypeName( void ) const;
 	virtual const std::string &getBoolLiteral( bool v ) const;
 	virtual const std::string &getConstLiteral( void ) const;
 	virtual void startCast( const char *type );
+
+	virtual const std::string &beginComment( void ) const;
+	virtual const std::string &beginCommentLine( void ) const;
+	virtual const std::string &endComment( void ) const;
 
 private:
 	bool myCPP11Mode;
