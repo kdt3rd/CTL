@@ -121,6 +121,7 @@ CPPGenerator::getDriver( void )
 			"#endif\n"
 			"#include <errno.h>\n"
 			"#include <pthread.h>\n"
+			"#include <unistd.h>\n"
 			"\n\n"
 			"static pthread_cond_t theWaitCond;\n"
 			"static pthread_cond_t theWorkCond;\n"
