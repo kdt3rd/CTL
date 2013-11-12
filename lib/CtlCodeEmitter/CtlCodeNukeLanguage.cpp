@@ -268,7 +268,7 @@ NukeGenerator::getDriver( void )
 			newlineAndIndent();
 			curStream() << "const float *input" << i << " = in[chan" << i << "] + x;";
 			newlineAndIndent();
-			curStream() << "float *output" << i << " = out.writable[chan" << i << "] + x;";
+			curStream() << "float *output" << i << " = out.writable(chan" << i << ") + x;";
 			if ( i == 0 )
 			{
 				newlineAndIndent();
