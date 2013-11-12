@@ -547,6 +547,8 @@ main( int argc, const char *argv[] )
 					}
 					if ( compileDebug )
 						cmdLine.insert( cmdLine.begin() + 1, 1, "-g" );
+					else
+						cmdLine.insert( cmdLine.begin() + 1, 1, "-O3" );
 				}
 
 				std::cout << "compile line: ";
