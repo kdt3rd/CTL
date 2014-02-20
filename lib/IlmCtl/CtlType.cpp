@@ -330,11 +330,11 @@ BoolType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 		//
 
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, !x->value);
+			    (expr->lineNumber, !x->value, std::string());
 
 	      case TK_NOT:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, !x->value);
+			    (expr->lineNumber, !x->value, std::string());
 
 	      default:
 
@@ -356,7 +356,7 @@ BoolType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 	    {
 	      case TK_AND:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value && y->value);
+			    (expr->lineNumber, x->value && y->value, std::string());
 
 	      case TK_BITAND:
 
@@ -367,43 +367,43 @@ BoolType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 		// 
 
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, !!x->value & !!y->value);
+			    (expr->lineNumber, !!x->value & !!y->value, std::string());
 
 	      case TK_BITOR:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, !!x->value | !!y->value);
+			    (expr->lineNumber, !!x->value | !!y->value, std::string());
 
 	      case TK_BITXOR:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, !!x->value ^ !!y->value);
+			    (expr->lineNumber, !!x->value ^ !!y->value, std::string());
 
 	      case TK_EQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value == y->value);
+			    (expr->lineNumber, x->value == y->value, std::string());
 
 	      case TK_GREATER:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value > y->value);
+			    (expr->lineNumber, x->value > y->value, std::string());
 
 	      case TK_GREATEREQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value >= y->value);
+			    (expr->lineNumber, x->value >= y->value, std::string());
 
 	      case TK_LESS:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value < y->value);
+			    (expr->lineNumber, x->value < y->value, std::string());
 
 	      case TK_LESSEQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value <= y->value);
+			    (expr->lineNumber, x->value <= y->value, std::string());
 
 	      case TK_NOTEQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value != y->value);
+			    (expr->lineNumber, x->value != y->value, std::string());
 
 	      case TK_OR:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value || y->value);
+			    (expr->lineNumber, x->value || y->value, std::string());
 
 	      default:
 
@@ -425,16 +425,16 @@ ExprNodePtr
 BoolType::castValue (LContext &lcontext, const ExprNodePtr &expr) const
 {
     if (IntLiteralNodePtr x = expr.cast<IntLiteralNode>())
-	return lcontext.newBoolLiteralNode (x->lineNumber, (bool) x->value);
+	return lcontext.newBoolLiteralNode (x->lineNumber, (bool) x->value, x->literal);
 
     if (UIntLiteralNodePtr x = expr.cast<UIntLiteralNode>())
-	return lcontext.newBoolLiteralNode (x->lineNumber, (bool) x->value);
+	return lcontext.newBoolLiteralNode (x->lineNumber, (bool) x->value, x->literal);
 
     if (HalfLiteralNodePtr x = expr.cast<HalfLiteralNode>())
-	return lcontext.newBoolLiteralNode (x->lineNumber, (bool) x->value);
+	return lcontext.newBoolLiteralNode (x->lineNumber, (bool) x->value, x->literal);
 
     if (FloatLiteralNodePtr x = expr.cast<FloatLiteralNode>())
-	return lcontext.newBoolLiteralNode (x->lineNumber, (bool) x->value);
+	return lcontext.newBoolLiteralNode (x->lineNumber, (bool) x->value, x->literal);
 
     return expr;
 }
@@ -506,15 +506,23 @@ IntType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 	    {
 	      case TK_BITNOT:
 		return lcontext.newIntLiteralNode
-			    (expr->lineNumber, ~x->value);
+		    (expr->lineNumber, ~x->value, std::string());
 
 	      case TK_MINUS:
-		return lcontext.newIntLiteralNode
-			    (expr->lineNumber, -x->value);
+		  if ( x->literal.empty() )
+		      return lcontext.newIntLiteralNode
+			  (expr->lineNumber, -x->value, std::string());
+
+		  if ( x->literal[0] == '-' )
+		      return lcontext.newIntLiteralNode
+			  (expr->lineNumber, -x->value, x->literal.substr(1));
+
+		  return lcontext.newIntLiteralNode
+		      (expr->lineNumber, -x->value, "-" + x->literal);
 
 	      case TK_NOT:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, !x->value);
+			    (expr->lineNumber, !x->value, std::string());
 
 	      default:
 
@@ -539,25 +547,25 @@ IntType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 	    {
 	      case TK_AND:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value && y->value);
+			    (expr->lineNumber, x->value && y->value, std::string());
 
 	      case TK_BITAND:
 		return lcontext.newIntLiteralNode
-			    (expr->lineNumber, x->value & y->value);
+			    (expr->lineNumber, x->value & y->value, std::string());
 
 	      case TK_BITOR:
 		return lcontext.newIntLiteralNode
-			    (expr->lineNumber, x->value | y->value);
+			    (expr->lineNumber, x->value | y->value, std::string());
 
 	      case TK_BITXOR:
 		return lcontext.newIntLiteralNode
-			    (expr->lineNumber, x->value ^ y->value);
+			    (expr->lineNumber, x->value ^ y->value, std::string());
 
 	      case TK_DIV:
 		if (y->value != 0)
 		{
 		    return lcontext.newIntLiteralNode
-				(expr->lineNumber, x->value / y->value);
+				(expr->lineNumber, x->value / y->value, std::string());
 		}
 		else
 		{
@@ -565,60 +573,60 @@ IntType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 				"Warning: Division by zero "
 				"(" << x->value << "/" << y->value << ").");
 
-		    return lcontext.newIntLiteralNode (expr->lineNumber, 0);
+		    return lcontext.newIntLiteralNode (expr->lineNumber, 0, std::string());
 		}
 
 	      case TK_EQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value == y->value);
+			    (expr->lineNumber, x->value == y->value, std::string());
 
 	      case TK_GREATER:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value > y->value);
+			    (expr->lineNumber, x->value > y->value, std::string());
 
 	      case TK_GREATEREQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value >= y->value);
+			    (expr->lineNumber, x->value >= y->value, std::string());
 
 	      case TK_LEFTSHIFT:
 		return lcontext.newIntLiteralNode
-			    (expr->lineNumber, x->value << y->value);
+			    (expr->lineNumber, x->value << y->value, std::string());
 
 	      case TK_LESS:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value < y->value);
+			    (expr->lineNumber, x->value < y->value, std::string());
 
 	      case TK_LESSEQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value <= y->value);
+			    (expr->lineNumber, x->value <= y->value, std::string());
 
 	      case TK_MINUS:
 		return lcontext.newIntLiteralNode
-			    (expr->lineNumber, x->value - y->value);
+			    (expr->lineNumber, x->value - y->value, std::string());
 
 	      case TK_MOD:
 		return lcontext.newIntLiteralNode
-			    (expr->lineNumber, x->value % y->value);
+			    (expr->lineNumber, x->value % y->value, std::string());
 
 	      case TK_NOTEQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value != y->value);
+			    (expr->lineNumber, x->value != y->value, std::string());
 
 	      case TK_OR:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value || y->value);
+			    (expr->lineNumber, x->value || y->value, std::string());
 
 	      case TK_PLUS:
 		return lcontext.newIntLiteralNode
-			    (expr->lineNumber, x->value + y->value);
+			    (expr->lineNumber, x->value + y->value, std::string());
 
 	      case TK_RIGHTSHIFT:
 		return lcontext.newIntLiteralNode
-			    (expr->lineNumber, x->value >> y->value);
+			    (expr->lineNumber, x->value >> y->value, std::string());
 
 	      case TK_TIMES:
 		return lcontext.newIntLiteralNode
-			    (expr->lineNumber, x->value * y->value);
+			    (expr->lineNumber, x->value * y->value, std::string());
 
 	      default:
 
@@ -640,16 +648,16 @@ ExprNodePtr
 IntType::castValue (LContext &lcontext, const ExprNodePtr &expr) const
 {
     if (BoolLiteralNodePtr x = expr.cast<BoolLiteralNode>())
-	return lcontext.newIntLiteralNode (x->lineNumber, (int) x->value);
+	return lcontext.newIntLiteralNode (x->lineNumber, (int) x->value, x->literal);
 
     if (UIntLiteralNodePtr x = expr.cast<UIntLiteralNode>())
-	return lcontext.newIntLiteralNode (x->lineNumber, (int) x->value);
+	return lcontext.newIntLiteralNode (x->lineNumber, (int) x->value, x->literal);
 
     if (HalfLiteralNodePtr x = expr.cast<HalfLiteralNode>())
-	return lcontext.newIntLiteralNode (x->lineNumber, (int) x->value);
+	return lcontext.newIntLiteralNode (x->lineNumber, (int) x->value, x->literal);
 
     if (FloatLiteralNodePtr x = expr.cast<FloatLiteralNode>())
-	return lcontext.newIntLiteralNode (x->lineNumber, (int) x->value);
+	return lcontext.newIntLiteralNode (x->lineNumber, (int) x->value, x->literal);
 
     return expr;
 }
@@ -720,15 +728,15 @@ UIntType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 	    {
 	      case TK_BITNOT:
 		return lcontext.newUIntLiteralNode
-			    (expr->lineNumber, ~x->value);
+			    (expr->lineNumber, ~x->value, std::string());
 
 	      case TK_MINUS:
 		return lcontext.newIntLiteralNode
-			    (expr->lineNumber, -int (x->value));
+			    (expr->lineNumber, -int (x->value), std::string());
 
 	      case TK_NOT:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, !x->value);
+			    (expr->lineNumber, !x->value, std::string());
 
 	      default:
 
@@ -753,25 +761,25 @@ UIntType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 	    {
 	      case TK_AND:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value && y->value);
+			    (expr->lineNumber, x->value && y->value, std::string());
 
 	      case TK_BITAND:
 		return lcontext.newUIntLiteralNode
-			    (expr->lineNumber, x->value & y->value);
+			    (expr->lineNumber, x->value & y->value, std::string());
 
 	      case TK_BITOR:
 		return lcontext.newUIntLiteralNode
-			    (expr->lineNumber, x->value | y->value);
+			    (expr->lineNumber, x->value | y->value, std::string());
 
 	      case TK_BITXOR:
 		return lcontext.newUIntLiteralNode
-			    (expr->lineNumber, x->value ^ y->value);
+			    (expr->lineNumber, x->value ^ y->value, std::string());
 
 	      case TK_DIV:
 		if (y->value != 0)
 		{
 		    return lcontext.newUIntLiteralNode
-				(expr->lineNumber, x->value / y->value);
+				(expr->lineNumber, x->value / y->value, std::string());
 		}
 		else
 		{
@@ -779,60 +787,60 @@ UIntType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 				"Warning: Division by zero "
 				"(" << x->value << "/" << y->value << ").");
 
-		    return lcontext.newUIntLiteralNode (expr->lineNumber, 0);
+		    return lcontext.newUIntLiteralNode (expr->lineNumber, 0, std::string());
 		}
 
 	      case TK_EQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value == y->value);
+			    (expr->lineNumber, x->value == y->value, std::string());
 
 	      case TK_GREATER:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value > y->value);
+			    (expr->lineNumber, x->value > y->value, std::string());
 
 	      case TK_GREATEREQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value >= y->value);
+			    (expr->lineNumber, x->value >= y->value, std::string());
 
 	      case TK_LEFTSHIFT:
 		return lcontext.newUIntLiteralNode
-			    (expr->lineNumber, x->value << y->value);
+			    (expr->lineNumber, x->value << y->value, std::string());
 
 	      case TK_LESS:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value < y->value);
+			    (expr->lineNumber, x->value < y->value, std::string());
 
 	      case TK_LESSEQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value <= y->value);
+			    (expr->lineNumber, x->value <= y->value, std::string());
 
 	      case TK_MINUS:
 		return lcontext.newUIntLiteralNode
-			    (expr->lineNumber, x->value - y->value);
+			    (expr->lineNumber, x->value - y->value, std::string());
 
 	      case TK_MOD:
 		return lcontext.newUIntLiteralNode
-			    (expr->lineNumber, x->value % y->value);
+			    (expr->lineNumber, x->value % y->value, std::string());
 
 	      case TK_NOTEQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value != y->value);
+			    (expr->lineNumber, x->value != y->value, std::string());
 
 	      case TK_OR:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value || y->value);
+			    (expr->lineNumber, x->value || y->value, std::string());
 
 	      case TK_PLUS:
 		return lcontext.newUIntLiteralNode
-			    (expr->lineNumber, x->value + y->value);
+			    (expr->lineNumber, x->value + y->value, std::string());
 
 	      case TK_RIGHTSHIFT:
 		return lcontext.newUIntLiteralNode
-			    (expr->lineNumber, x->value >> y->value);
+			    (expr->lineNumber, x->value >> y->value, std::string());
 
 	      case TK_TIMES:
 		return lcontext.newUIntLiteralNode
-			    (expr->lineNumber, x->value * y->value);
+			    (expr->lineNumber, x->value * y->value, std::string());
 
 	      default:
 
@@ -854,16 +862,16 @@ ExprNodePtr
 UIntType::castValue (LContext &lcontext, const ExprNodePtr &expr) const
 {
     if (BoolLiteralNodePtr x = expr.cast<BoolLiteralNode>())
-	return lcontext.newUIntLiteralNode (x->lineNumber, (unsigned) x->value);
+	return lcontext.newUIntLiteralNode (x->lineNumber, (unsigned) x->value, x->literal);
 
     if (IntLiteralNodePtr x = expr.cast<IntLiteralNode>())
-	return lcontext.newUIntLiteralNode (x->lineNumber, (unsigned) x->value);
+	return lcontext.newUIntLiteralNode (x->lineNumber, (unsigned) x->value, x->literal);
 
     if (HalfLiteralNodePtr x = expr.cast<HalfLiteralNode>())
-	return lcontext.newUIntLiteralNode (x->lineNumber, (unsigned) x->value);
+	return lcontext.newUIntLiteralNode (x->lineNumber, (unsigned) x->value, x->literal);
 
     if (FloatLiteralNodePtr x = expr.cast<FloatLiteralNode>())
-	return lcontext.newUIntLiteralNode (x->lineNumber, (unsigned) x->value);
+	return lcontext.newUIntLiteralNode (x->lineNumber, (unsigned) x->value, x->literal);
 
     return expr;
 }
@@ -936,11 +944,11 @@ HalfType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 	    {
 	      case TK_MINUS:
 		return lcontext.newHalfLiteralNode
-			    (expr->lineNumber, -x->value);
+		    (expr->lineNumber, -x->value, std::string());
 
 	      case TK_NOT:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, !x->value);
+			    (expr->lineNumber, !x->value, std::string());
 
 	      default:
 
@@ -965,7 +973,7 @@ HalfType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 	    {
 	      case TK_AND:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value && y->value);
+			    (expr->lineNumber, x->value && y->value, std::string());
 
 	      case TK_DIV:
 		if (y->value == 0)
@@ -976,47 +984,47 @@ HalfType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 		}
 
 		return lcontext.newHalfLiteralNode
-			    (expr->lineNumber, x->value / y->value);
+			    (expr->lineNumber, x->value / y->value, std::string());
 
 	      case TK_EQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value == y->value);
+			    (expr->lineNumber, x->value == y->value, std::string());
 
 	      case TK_GREATER:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value > y->value);
+			    (expr->lineNumber, x->value > y->value, std::string());
 
 	      case TK_GREATEREQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value >= y->value);
+			    (expr->lineNumber, x->value >= y->value, std::string());
 
 	      case TK_LESS:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value < y->value);
+			    (expr->lineNumber, x->value < y->value, std::string());
 
 	      case TK_LESSEQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value <= y->value);
+			    (expr->lineNumber, x->value <= y->value, std::string());
 
 	      case TK_MINUS:
 		return lcontext.newHalfLiteralNode
-			    (expr->lineNumber, x->value - y->value);
+			    (expr->lineNumber, x->value - y->value, std::string());
 
 	      case TK_NOTEQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value != y->value);
+			    (expr->lineNumber, x->value != y->value, std::string());
 
 	      case TK_OR:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value || y->value);
+			    (expr->lineNumber, x->value || y->value, std::string());
 
 	      case TK_PLUS:
 		return lcontext.newHalfLiteralNode
-			    (expr->lineNumber, x->value + y->value);
+			    (expr->lineNumber, x->value + y->value, std::string());
 
 	      case TK_TIMES:
 		return lcontext.newHalfLiteralNode
-			    (expr->lineNumber, x->value * y->value);
+			    (expr->lineNumber, x->value * y->value, std::string());
 
 	      default:
 
@@ -1038,16 +1046,16 @@ ExprNodePtr
 HalfType::castValue (LContext &lcontext, const ExprNodePtr &expr) const
 {
     if (BoolLiteralNodePtr x = expr.cast<BoolLiteralNode>())
-	return lcontext.newHalfLiteralNode (x->lineNumber, (half) x->value);
+	return lcontext.newHalfLiteralNode (x->lineNumber, (float) x->value, x->literal);
 
     if (IntLiteralNodePtr x = expr.cast<IntLiteralNode>())
-	return lcontext.newHalfLiteralNode (x->lineNumber, (half) x->value);
+	return lcontext.newHalfLiteralNode (x->lineNumber, (float) x->value, x->literal);
 
     if (UIntLiteralNodePtr x = expr.cast<UIntLiteralNode>())
-	return lcontext.newHalfLiteralNode (x->lineNumber, (half) x->value);
+	return lcontext.newHalfLiteralNode (x->lineNumber, (float) x->value, x->literal);
 
     if (FloatLiteralNodePtr x = expr.cast<FloatLiteralNode>())
-	return lcontext.newHalfLiteralNode (x->lineNumber, (half) x->value);
+	return lcontext.newHalfLiteralNode (x->lineNumber, (float) x->value, x->literal);
 
     return expr;
 }
@@ -1120,12 +1128,19 @@ FloatType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 	    switch (unOp->op)
 	    {
 	      case TK_MINUS:
-		return lcontext.newFloatLiteralNode
-			    (expr->lineNumber, -x->value);
+		  if ( x->literal.empty() )
+		      return lcontext.newFloatLiteralNode
+			  (expr->lineNumber, -x->value, std::string());
+		  if ( x->literal[0] == '-' )
+		      return lcontext.newFloatLiteralNode
+			  (expr->lineNumber, -x->value, x->literal.substr(1));
+
+		  return lcontext.newFloatLiteralNode
+		      (expr->lineNumber, -x->value, "-" + x->literal);
 
 	      case TK_NOT:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, !x->value);
+		    (expr->lineNumber, !x->value, std::string());
 
 	      default:
 
@@ -1150,7 +1165,7 @@ FloatType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 	    {
 	      case TK_AND:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value && y->value);
+		    (expr->lineNumber, x->value && y->value, std::string());
 
 	      case TK_DIV:
 		if (y->value == 0)
@@ -1161,47 +1176,47 @@ FloatType::evaluate (LContext &lcontext, const ExprNodePtr &expr) const
 		}
 
 		return lcontext.newFloatLiteralNode
-			    (expr->lineNumber, x->value / y->value);
+			    (expr->lineNumber, x->value / y->value, std::string());
 
 	      case TK_EQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value == y->value);
+			    (expr->lineNumber, x->value == y->value, std::string());
 
 	      case TK_GREATER:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value > y->value);
+			    (expr->lineNumber, x->value > y->value, std::string());
 
 	      case TK_GREATEREQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value >= y->value);
+			    (expr->lineNumber, x->value >= y->value, std::string());
 
 	      case TK_LESS:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value < y->value);
+			    (expr->lineNumber, x->value < y->value, std::string());
 
 	      case TK_LESSEQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value <= y->value);
+			    (expr->lineNumber, x->value <= y->value, std::string());
 
 	      case TK_MINUS:
 		return lcontext.newFloatLiteralNode
-			    (expr->lineNumber, x->value - y->value);
+			    (expr->lineNumber, x->value - y->value, std::string());
 
 	      case TK_NOTEQUAL:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value != y->value);
+			    (expr->lineNumber, x->value != y->value, std::string());
 
 	      case TK_OR:
 		return lcontext.newBoolLiteralNode
-			    (expr->lineNumber, x->value || y->value);
+			    (expr->lineNumber, x->value || y->value, std::string());
 
 	      case TK_PLUS:
 		return lcontext.newFloatLiteralNode
-			    (expr->lineNumber, x->value + y->value);
+			    (expr->lineNumber, x->value + y->value, std::string());
 
 	      case TK_TIMES:
 		return lcontext.newFloatLiteralNode
-			    (expr->lineNumber, x->value * y->value);
+			    (expr->lineNumber, x->value * y->value, std::string());
 
 	      default:
 
@@ -1223,16 +1238,16 @@ ExprNodePtr
 FloatType::castValue (LContext &lcontext, const ExprNodePtr &expr) const
 {
     if (BoolLiteralNodePtr x = expr.cast<BoolLiteralNode>())
-	return lcontext.newFloatLiteralNode (x->lineNumber, (float) x->value);
+	return lcontext.newFloatLiteralNode (x->lineNumber, (number) x->value, x->literal);
 
     if (IntLiteralNodePtr x = expr.cast<IntLiteralNode>())
-	return lcontext.newFloatLiteralNode (x->lineNumber, (float) x->value);
+	return lcontext.newFloatLiteralNode (x->lineNumber, (number) x->value, x->literal);
 
     if (UIntLiteralNodePtr x = expr.cast<UIntLiteralNode>())
-	return lcontext.newFloatLiteralNode (x->lineNumber, (float) x->value);
+	return lcontext.newFloatLiteralNode (x->lineNumber, (number) x->value, x->literal);
 
     if (HalfLiteralNodePtr x = expr.cast<HalfLiteralNode>())
-	return lcontext.newFloatLiteralNode (x->lineNumber, (float) x->value);
+	return lcontext.newFloatLiteralNode (x->lineNumber, (number) x->value, x->literal);
 
     return expr;
 }

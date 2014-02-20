@@ -71,124 +71,34 @@
 #include <CtlSymbolTable.h>
 #include <cmath>
 #include <climits>
+#include <limits>
 #include <float.h>
 #include <half.h>
 #include <halfLimits.h>
+#include <CtlNumber.h>
 
 using namespace std;
 
 namespace Ctl {
 namespace {
 
-//
-// Floating-point number classification (assumes that type
-// float represents 32-bit IEEE 754 floating-point numbers)
-//
-
-bool
-isfinite_f (float f)
-{
-    union {float f; unsigned int i;} u;
-    u.f = f;
-
-    return (u.i & 0x7f800000) != 0x7f800000;
-}
+// These rely on C99, if they are erroring for some platform
+// we can bring back the old functions and make sure we force
+// compilation to float only
+inline bool isfinite_f( number f ) { return isfinite(f); }
+inline bool isnormal_f( number f ) { return isnormal(f); }
+inline bool isnan_f( number f ) { return isnan(f); }
+inline bool isinf_f( number f ) { return isinf(f); }
+inline bool isfinite_h (half h) { return h.isFinite(); }
+inline bool isnormal_h (half h) { return h.isNormalized(); }
+inline bool isnan_h (half h) { return h.isNan(); }
+inline bool isinf_h (half h) { return h.isInfinity(); }
 
 
-bool
-isnormal_f (float f)
-{
-    union {float f; unsigned int i;} u;
-    u.f = f;
-
-    return ((u.i & 0x7f800000) != 0x7f800000) && ((u.i & 0x7f800000) != 0);
-}
-
-
-bool
-isnan_f (float f)
-{
-    union {float f; unsigned int i;} u;
-    u.f = f;
-
-    return (u.i & 0x7fffffff) > 0x7f800000;
-}
-
-
-bool
-isinf_f (float f)
-{
-    union {float f; unsigned int i;} u;
-    u.f = f;
-
-    return (u.i & 0x7fffffff) == 0x7f800000;
-}
-
-
-bool
-isfinite_h (half h)
-{
-    return h.isFinite();
-}
-
-
-bool
-isnormal_h (half h)
-{
-    return h.isNormalized();
-}
-
-
-bool
-isnan_h (half h)
-{
-    return h.isNan();
-}
-
-
-bool
-isinf_h (half h)
-{
-    return h.isInfinity();
-}
-
-
-//
-// Functions that return infinities and NaNs (assumes that type
-// float represents 32-bit IEEE 754 floating-point numbers)
-//
-
-float
-posInf_f ()
-{
-    union {float f; unsigned int i;} u;
-    u.i = 0x7f800000;
-    return u.f;
-}
-
-
-float
-negInf_f ()
-{
-    union {float f; unsigned int i;} u;
-    u.i = 0xff800000;
-    return u.f;
-}
-
-
-float
-nan_f ()
-{
-    union {float f; unsigned int i;} u;
-    u.i = 0x7fffffff;
-    return u.f;
-}
-
-
-DEFINE_SIMD_FUNC_1_ARG (Isfinite_f, isfinite_f (a1), bool, float);
-DEFINE_SIMD_FUNC_1_ARG (Isnormal_f, isnormal_f (a1), bool, float);
-DEFINE_SIMD_FUNC_1_ARG (Isnan_f, isnan_f (a1), bool, float);
-DEFINE_SIMD_FUNC_1_ARG (Isinf_f, isinf_f (a1), bool, float);
+DEFINE_SIMD_FUNC_1_ARG (Isfinite_f, isfinite_f (a1), bool, number);
+DEFINE_SIMD_FUNC_1_ARG (Isnormal_f, isnormal_f (a1), bool, number);
+DEFINE_SIMD_FUNC_1_ARG (Isnan_f, isnan_f (a1), bool, number);
+DEFINE_SIMD_FUNC_1_ARG (Isinf_f, isinf_f (a1), bool, number);
 DEFINE_SIMD_FUNC_1_ARG (Isfinite_h, isfinite_h (a1), bool, half);
 DEFINE_SIMD_FUNC_1_ARG (Isnormal_h, isnormal_h (a1), bool, half);
 DEFINE_SIMD_FUNC_1_ARG (Isnan_h, isnan_h (a1), bool, half);
@@ -219,14 +129,14 @@ defineConstants (SymbolTable &symtab, SimdStdTypes &types)
     // need to be initialized only once.
     //
 
-    static SimdReg regM_E (false, sizeof (float));
-    static SimdReg regM_PI (false, sizeof (float));
-    static SimdReg regFLT_MAX (false, sizeof (float));
-    static SimdReg regFLT_MIN (false, sizeof (float));
-    static SimdReg regFLT_EPSILON (false, sizeof (float));
-    static SimdReg regFLT_POS_INF (false, sizeof (float));
-    static SimdReg regFLT_NEG_INF (false, sizeof (float));
-    static SimdReg regFLT_NAN (false, sizeof (float));
+    static SimdReg regM_E (false, sizeof (number));
+    static SimdReg regM_PI (false, sizeof (number));
+    static SimdReg regFLT_MAX (false, sizeof (number));
+    static SimdReg regFLT_MIN (false, sizeof (number));
+    static SimdReg regFLT_EPSILON (false, sizeof (number));
+    static SimdReg regFLT_POS_INF (false, sizeof (number));
+    static SimdReg regFLT_NEG_INF (false, sizeof (number));
+    static SimdReg regFLT_NAN (false, sizeof (number));
     static SimdReg regHALF_MAX (false, sizeof (half));
     static SimdReg regHALF_MIN (false, sizeof (half));
     static SimdReg regHALF_EPSILON (false, sizeof (half));
@@ -241,14 +151,19 @@ defineConstants (SymbolTable &symtab, SimdStdTypes &types)
 
     if (!initialized)
     {
-	*(float *)regM_E[0] = 2.7182818284590452354;
-	*(float *)regM_PI[0] = 3.14159265358979323846;
-	*(float *)regFLT_MAX[0] = FLT_MAX;
-	*(float *)regFLT_MIN[0] = FLT_MIN;
-	*(float *)regFLT_EPSILON[0] = FLT_EPSILON;
-	*(float *)regFLT_POS_INF[0] = posInf_f();
-	*(float *)regFLT_NEG_INF[0] = negInf_f();
-	*(float *)regFLT_NAN[0] = nan_f();
+#ifdef __USE_GNU
+	*(number *)regM_E[0] = M_El;
+	*(number *)regM_PI[0] = M_PIl;
+#else
+	*(number *)regM_E[0] = 2.7182818284590452354;
+	*(number *)regM_PI[0] = 3.14159265358979323846;
+#endif
+	*(number *)regFLT_MAX[0] = std::numeric_limits<number>::max();
+	*(number *)regFLT_MIN[0] = std::numeric_limits<number>::min();
+	*(number *)regFLT_EPSILON[0] = std::numeric_limits<number>::epsilon();
+	*(number *)regFLT_POS_INF[0] = std::numeric_limits<number>::infinity();
+	*(number *)regFLT_NEG_INF[0] = -std::numeric_limits<number>::infinity();
+	*(number *)regFLT_NAN[0] = std::numeric_limits<number>::quiet_NaN();
 	*(half *)regHALF_MAX[0] = HALF_MAX;
 	*(half *)regHALF_MIN[0] = HALF_MIN;
 	*(half *)regHALF_EPSILON[0] = HALF_EPSILON;

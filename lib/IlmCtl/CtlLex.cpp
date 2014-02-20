@@ -827,7 +827,7 @@ Lex::getIntOrFloatLiteral (bool decimalPointSeen)
 	const char *b = _tokenStringValue.c_str();
 	char *e;
 
-	_tokenFloatValue = strtod (b, &e);
+	_tokenFloatValue = strtold (b, &e);
 
 	if (e - b != (int)_tokenStringValue.size())
 	{

@@ -190,19 +190,19 @@ class SimdLContext: public LContext
 				     const SymbolInfoPtr &info) const;
 
     virtual BoolLiteralNodePtr	newBoolLiteralNode
-				    (int lineNumber, bool value) const;
+				    (int lineNumber, bool value, const std::string &raw) const;
 
     virtual IntLiteralNodePtr	newIntLiteralNode
-				    (int lineNumber, int value) const;
+				    (int lineNumber, int value, const std::string &raw) const;
 
     virtual UIntLiteralNodePtr	newUIntLiteralNode
-				    (int lineNumber, unsigned value) const;
+				    (int lineNumber, unsigned value, const std::string &raw) const;
 
     virtual HalfLiteralNodePtr	newHalfLiteralNode
-				    (int lineNumber, half value) const;
+				    (int lineNumber, half value, const std::string &raw) const;
 
     virtual FloatLiteralNodePtr	newFloatLiteralNode
-				    (int lineNumber, float value) const;
+				    (int lineNumber, number value, const std::string &raw) const;
 
     virtual StringLiteralNodePtr newStringLiteralNode
 				    (int lineNumber,

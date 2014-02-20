@@ -71,25 +71,25 @@ using namespace Imath;
 namespace Ctl {
 
 
-inline double 
-RbfInterpolator::kernel (double val, double sigma) const
+inline big_number 
+RbfInterpolator::kernel (big_number val, big_number sigma) const
 {
-    assert(sigma > .0f);
+    assert(sigma > .0);
 
     if (val > 2.*sigma)
-	return .0f;
+	return .0;
     else
     {
-	double r = val/sigma;
+	big_number r = val/sigma;
 	  
 	if (r > 1.)
 	{
-	    r -= 2.f;	    
+	    r -= 2.;	    
 	    return (-.25*r*r*r) / (M_PI*sigma);
 	}
 	else 
 	{
-	    double r2 = r*r;
+	    big_number r2 = r*r;
 
 	    return (1 - 1.5*r2 + .75*r*r2) / (M_PI*sigma);
 	}
@@ -97,20 +97,20 @@ RbfInterpolator::kernel (double val, double sigma) const
 }
 
 
-inline double 
-RbfInterpolator::kernelGrad (double val, double sigma) const
+inline big_number 
+RbfInterpolator::kernelGrad (big_number val, big_number sigma) const
 {
-    assert(sigma > .0f);
+    assert(sigma > .0);
 
     if (val > 2.*sigma)
-	return .0f;
+	return .0;
     else
     {
-	double r = val/sigma;
+	big_number r = val/sigma;
 	  
 	if (val > sigma)
 	{
-	    r -= 2.f;	    
+	    r -= 2.;	    
 	    return (-.75*r*r) / (M_PI*sigma);
 	}
 	else 
@@ -121,7 +121,7 @@ RbfInterpolator::kernelGrad (double val, double sigma) const
 }
 
 
-RbfInterpolator::RbfInterpolator (size_t n, const Imath::V3f p[/*n*/][2]):
+RbfInterpolator::RbfInterpolator (size_t n, const Vec3 p[/*n*/][2]):
     _samplePts (n),
     _numSamples (n),
     _lambdas (3*_numSamples),
@@ -132,11 +132,11 @@ RbfInterpolator::RbfInterpolator (size_t n, const Imath::V3f p[/*n*/][2]):
     for ( size_t s = 0; s < _numSamples; s++)
 	_samplePts[s] = p[s][0];
 
-    std::vector<double> b(3*_numSamples);
-    std::vector<double> bX(_numSamples);
-    std::vector<double> bY(_numSamples);
-    std::vector<double> bZ(_numSamples);
-    std::vector<double> valSparse;
+    std::vector<big_number> b(3*_numSamples);
+    std::vector<big_number> bX(_numSamples);
+    std::vector<big_number> bY(_numSamples);
+    std::vector<big_number> bZ(_numSamples);
+    std::vector<big_number> valSparse;
     std::vector<size_t> colInd;
     std::vector<size_t> rowPts;
     
@@ -185,9 +185,9 @@ RbfInterpolator::RbfInterpolator (size_t n, const Imath::V3f p[/*n*/][2]):
 	rowPts.push_back(endRow);	 
 	b[3*s+2] = p[s][1][2];	
     }
-    CRSOperator<double> OMAAff(valSparse, colInd, rowPts, 12);
+    CRSOperator<big_number> OMAAff(valSparse, colInd, rowPts, 12);
     
-    LSSCG<double, CRSOperator<double> > lssAffine(OMAAff);
+    LSSCG<big_number, CRSOperator<big_number> > lssAffine(OMAAff);
 
     fill(_affine.begin(), _affine.end(), 0.0);
     
@@ -211,11 +211,11 @@ RbfInterpolator::RbfInterpolator (size_t n, const Imath::V3f p[/*n*/][2]):
 
 	_pointTree->nearestPoints (_samplePts[i], numNeighbor, indices);
 	
-	double sum = .0;
+	big_number sum = .0;
 	for (size_t n = 0; n < indices.size(); n++)
 	{
 	    size_t nidx = indices[n];
-	    double delta[3];
+	    big_number delta[3];
 	    
 	    delta[0] = _samplePts[i][0] - _samplePts[nidx][0];
 	    delta[1] = _samplePts[i][1] - _samplePts[nidx][1];
@@ -224,7 +224,7 @@ RbfInterpolator::RbfInterpolator (size_t n, const Imath::V3f p[/*n*/][2]):
 	    sum += delta[0]*delta[0] + delta[1]*delta[1] + delta[2]*delta[2];
 	}
 	
-	_sigmas[i] = .5f * sqrt(sum);
+	_sigmas[i] = .5 * std::sqrt(sum);
 
 	if ( _sigmas[i] > _maxSigma)
 	    _maxSigma = _sigmas[i];
@@ -252,15 +252,15 @@ RbfInterpolator::RbfInterpolator (size_t n, const Imath::V3f p[/*n*/][2]):
     {
 	std::vector <size_t> indices;
 	
-	Imath::V3f center = _samplePts[s];
+	Vec3 center = _samplePts[s];
 	_pointTree->intersect(center, 2.*_maxSigma, indices);
 		
 	size_t nonZero = 0;
 	for (size_t n = 0; n < indices.size(); n++)
 	{
 	    size_t nidx = indices[n];
-	    double dist = (center - _samplePts[nidx]).length();
-	    double weight = kernel (dist, _sigmas[nidx]);
+	    big_number dist = (center - _samplePts[nidx]).length();
+	    big_number weight = kernel (dist, _sigmas[nidx]);
 	    
 	    if (weight > .0) 
 	    {
@@ -281,13 +281,13 @@ RbfInterpolator::RbfInterpolator (size_t n, const Imath::V3f p[/*n*/][2]):
 	    rowPts.push_back(endRow);	    
     }
 
-    CRSOperator<double> OMA(valSparse, colInd, rowPts, _numSamples);
+    CRSOperator<big_number> OMA(valSparse, colInd, rowPts, _numSamples);
     
-    LSSCG<double, CRSOperator<double> > lss(OMA);
+    LSSCG<big_number, CRSOperator<big_number> > lss(OMA);
 
-    std::vector<double> solX(_numSamples, 0.0);
-    std::vector<double> solY(_numSamples, 0.0);
-    std::vector<double> solZ(_numSamples, 0.0);
+    std::vector<big_number> solX(_numSamples, 0.0);
+    std::vector<big_number> solY(_numSamples, 0.0);
+    std::vector<big_number> solZ(_numSamples, 0.0);
     
     lss.solver.maxNumIterations = 30*_numSamples;
     lss.solver.tolerance = 1.e-7;
@@ -297,28 +297,28 @@ RbfInterpolator::RbfInterpolator (size_t n, const Imath::V3f p[/*n*/][2]):
     lss(bY.begin(), bY.end(), solY.begin(), solY.end());
     lss(bZ.begin(), bZ.end(), solZ.begin(), solZ.end());        
 #else
-    std::vector<double> s(_numSamples);
-    double tolX = lss(bX.begin(), bX.end(), solX.begin(), solX.end());
-    double tolY = lss(bY.begin(), bY.end(), solY.begin(), solY.end());
-    double tolZ = lss(bZ.begin(), bZ.end(), solZ.begin(), solZ.end());    
+    std::vector<big_number> s(_numSamples);
+    big_number tolX = lss(bX.begin(), bX.end(), solX.begin(), solX.end());
+    big_number tolY = lss(bY.begin(), bY.end(), solY.begin(), solY.end());
+    big_number tolZ = lss(bZ.begin(), bZ.end(), solZ.begin(), solZ.end());    
     
     std::cout << "bX\n";
-    copy(bX.begin(), bX.end(), ostream_iterator<double>(std::cout, " "));
+    copy(bX.begin(), bX.end(), ostream_iterator<big_number>(std::cout, " "));
     cout << "\nsX\n";
     OMA.apply(solX.begin(), solX.end(), s.begin(), s.end());    
-    copy(s.begin(), s.end(), ostream_iterator<double>(cout, " "));
+    copy(s.begin(), s.end(), ostream_iterator<big_number>(cout, " "));
 
     std::cout << "\n\nbY\n";
-    copy(bY.begin(), bY.end(), ostream_iterator<double>(std::cout, " "));
+    copy(bY.begin(), bY.end(), ostream_iterator<big_number>(std::cout, " "));
     cout << "\nsY\n";
     OMA.apply(solY.begin(), solY.end(), s.begin(), s.end());    
-    copy(s.begin(), s.end(), ostream_iterator<double>(cout, " "));
+    copy(s.begin(), s.end(), ostream_iterator<big_number>(cout, " "));
 
     std::cout << "\n\nbZ\n";
-    copy(bZ.begin(), bZ.end(), ostream_iterator<double>(std::cout, " "));
+    copy(bZ.begin(), bZ.end(), ostream_iterator<big_number>(std::cout, " "));
     cout << "\nsZ\n";
     OMA.apply(solZ.begin(), solZ.end(), s.begin(), s.end());    
-    copy(s.begin(), s.end(), ostream_iterator<double>(cout, " "));
+    copy(s.begin(), s.end(), ostream_iterator<big_number>(cout, " "));
 
 
     std::cout << "\n\nTolerance " << tolX << " " << tolY << " " << tolZ <<
@@ -340,21 +340,21 @@ RbfInterpolator::~RbfInterpolator ()
 }
 
 
-Imath::V3f
-RbfInterpolator::value (const Imath::V3f &x) const
+Vec3
+RbfInterpolator::value (const Vec3 &x) const
 {
     std::vector <size_t> indices;
     _pointTree->intersect(x, 2.*_maxSigma, indices);
     
-    double sumX = .0;
-    double sumY = .0;
-    double sumZ = .0;
+    big_number sumX = .0;
+    big_number sumY = .0;
+    big_number sumZ = .0;
 
     for (size_t n = 0; n < indices.size(); n++)
     {
 	size_t nidx = indices[n];
 	
-	double weight = kernel((_samplePts[nidx] - x).length(), 
+	big_number weight = kernel((_samplePts[nidx] - x).length(), 
 			       _sigmas[nidx]);
 	
 	sumX += weight*_lambdas[3*nidx];
@@ -366,25 +366,25 @@ RbfInterpolator::value (const Imath::V3f &x) const
     sumY += _affine[4]*x[0] + _affine[5]*x[1] + _affine[6]*x[2] + _affine[7];
     sumZ += _affine[8]*x[0] + _affine[9]*x[1] + _affine[10]*x[2] + _affine[11];
 
-    return Imath::V3f(sumX, sumY, sumZ);
+    return Vec3(sumX, sumY, sumZ);
 }
 
 
-Imath::V3f
-RbfInterpolator::gradient (const Imath::V3f &x) const
+Vec3
+RbfInterpolator::gradient (const Vec3 &x) const
 {
     std::vector <size_t> indices;
     _pointTree->intersect(x, 2.*_maxSigma, indices);
     
-    double sumX = .0;
-    double sumY = .0;
-    double sumZ = .0;
+    big_number sumX = .0;
+    big_number sumY = .0;
+    big_number sumZ = .0;
     
     for (size_t n = 0; n < indices.size(); n++)
     {
 	size_t nidx = indices[n];
 	
-	double weight = kernelGrad((_samplePts[nidx] - x).length(), 
+	big_number weight = kernelGrad((_samplePts[nidx] - x).length(), 
 				   _sigmas[nidx]);
 	
 	sumX += weight*_lambdas[3*nidx];
@@ -392,7 +392,7 @@ RbfInterpolator::gradient (const Imath::V3f &x) const
 	sumZ += weight*_lambdas[3*nidx+2];
     }    
     
-    return Imath::V3f(sumX, sumY, sumZ);
+    return Vec3(sumX, sumY, sumZ);
 }
 
 } // namespace Ctl

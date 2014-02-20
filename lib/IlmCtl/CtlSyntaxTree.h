@@ -62,6 +62,7 @@
 //
 //-----------------------------------------------------------------------------
 
+#include <CtlNumber.h>
 #include <CtlTokens.h>
 #include <CtlRcPtr.h>
 #include <half.h>
@@ -512,7 +513,7 @@ struct LiteralNode: public ExprNode
     // literals in a CTL program
     //----------------------------------------
 
-    LiteralNode (int lineNumber);
+    LiteralNode (int lineNumber, const std::string &rawStr);
 
     virtual void	computeType (LContext &lcontext,
 				     const SymbolInfoPtr &initInfo = 0);
@@ -524,12 +525,14 @@ struct LiteralNode: public ExprNode
     virtual char*       valuePtr() = 0;
     virtual void	printLiteral () const = 0;
 
+    // useful for later recompilation / preserving exact symbolic value
+    std::string literal;
 };
 
 
 struct BoolLiteralNode: public LiteralNode
 {
-    BoolLiteralNode (int lineNumber, const LContext &lcontext, bool value);
+    BoolLiteralNode (int lineNumber, const LContext &lcontext, bool value, const std::string &raw);
 
     virtual void	print (int indent) const;
     virtual void	printLiteral () const;
@@ -540,7 +543,7 @@ struct BoolLiteralNode: public LiteralNode
 
 struct IntLiteralNode: public LiteralNode
 {
-    IntLiteralNode (int lineNumber, const LContext &lcontext, int value);
+    IntLiteralNode (int lineNumber, const LContext &lcontext, int value, const std::string &rawString);
 
     virtual void	print (int indent) const;
     virtual void	printLiteral () const;
@@ -551,7 +554,7 @@ struct IntLiteralNode: public LiteralNode
 
 struct UIntLiteralNode: public LiteralNode
 {
-    UIntLiteralNode (int lineNumber, const LContext &lcontext, unsigned value);
+    UIntLiteralNode (int lineNumber, const LContext &lcontext, unsigned value, const std::string &rawString);
 
     virtual void	print (int indent) const;
     virtual void	printLiteral () const;
@@ -562,7 +565,7 @@ struct UIntLiteralNode: public LiteralNode
 
 struct HalfLiteralNode: public LiteralNode
 {
-    HalfLiteralNode (int lineNumber, const LContext &lcontext, half value);
+    HalfLiteralNode (int lineNumber, const LContext &lcontext, half value, const std::string &rawString);
 
     virtual void	print (int indent) const;
     virtual void	printLiteral () const;
@@ -573,12 +576,12 @@ struct HalfLiteralNode: public LiteralNode
 
 struct FloatLiteralNode: public LiteralNode
 {
-    FloatLiteralNode (int lineNumber, const LContext &lcontext, float value);
+    FloatLiteralNode (int lineNumber, const LContext &lcontext, number value, const std::string &rawString);
 
     virtual void	print (int indent) const;
     virtual void	printLiteral () const;
 
-    float		value;
+    number		value;
 };
 
 

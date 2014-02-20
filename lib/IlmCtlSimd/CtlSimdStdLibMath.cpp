@@ -67,58 +67,58 @@
 #include <CtlSimdStdTypes.h>
 #include <CtlSimdCFunc.h>
 #include <CtlSimdHalfExpLog.h>
+#include <CtlNumber.h>
 #include <ImathMatrix.h>
 #include <cmath>
 
-using namespace Imath;
 using namespace std;
 
 namespace Ctl {
 namespace {
 
-DEFINE_SIMD_FUNC_1_ARG (Acos, acos (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (Asin, asin (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (Atan, atan (a1), float, float);
-DEFINE_SIMD_FUNC_2_ARG (Atan2, atan2 (a1, a2), float, float, float);
-DEFINE_SIMD_FUNC_1_ARG (Cos, cos (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (Sin, sin (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (Tan, tan (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (Cosh, cosh (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (Sinh, sinh (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (Tanh, tanh (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (Exp, exp (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (ExpH, exp_h (a1), half, float);
-DEFINE_SIMD_FUNC_1_ARG (Log, log (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (LogH, log_h (a1), float, half);
-DEFINE_SIMD_FUNC_1_ARG (Log10, log10 (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (Log10H, log10_h (a1), float, half);
-DEFINE_SIMD_FUNC_2_ARG (Pow, pow (a1, a2), float, float, float);
-DEFINE_SIMD_FUNC_2_ARG (PowH, pow_h (a1, a2), half, half, float);
-DEFINE_SIMD_FUNC_1_ARG (Pow10, pow (10.0f, a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (Pow10H, pow10_h (a1), half, float);
-DEFINE_SIMD_FUNC_1_ARG (Sqrt, sqrt (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (Fabs, fabs (a1), float, float);
-DEFINE_SIMD_FUNC_1_ARG (Floor, floor (a1), float, float);
-DEFINE_SIMD_FUNC_2_ARG (Fmod, fmod (a1, a2), float, float, float);
-DEFINE_SIMD_FUNC_2_ARG (Hypot, hypot (a1, a2), float, float, float);
-DEFINE_SIMD_FUNC_2_ARG (Mult_f33_f33, a1 * a2, M33f, M33f, M33f);
-DEFINE_SIMD_FUNC_2_ARG (Mult_f44_f44, a1 * a2, M44f, M44f, M44f);
-DEFINE_SIMD_FUNC_2_ARG (Mult_f_f33, a1 * a2, M33f, float, M33f);
-DEFINE_SIMD_FUNC_2_ARG (Mult_f_f44, a1 * a2, M44f, float, M44f);
-DEFINE_SIMD_FUNC_2_ARG (Add_f33_f33, a1 + a2, M33f, M33f, M33f);
-DEFINE_SIMD_FUNC_2_ARG (Add_f44_f44, a1 + a2, M44f, M44f, M44f);
-DEFINE_SIMD_FUNC_1_ARG (Invert_f33, a1.inverse(), M33f, M33f);
-DEFINE_SIMD_FUNC_1_ARG (Invert_f44, a1.inverse(), M44f, M44f);
-DEFINE_SIMD_FUNC_1_ARG (Transpose_f33, a1.transposed(), M33f, M33f);
-DEFINE_SIMD_FUNC_1_ARG (Transpose_f44, a1.transposed(), M44f, M44f);
-DEFINE_SIMD_FUNC_2_ARG (Mult_f3_f33, a1 * a2, V3f, V3f, M33f);
-DEFINE_SIMD_FUNC_2_ARG (Mult_f3_f44, a1 * a2, V3f, V3f, M44f);
-DEFINE_SIMD_FUNC_2_ARG (Mult_f_f3, a1 * a2, V3f, float, V3f);
-DEFINE_SIMD_FUNC_2_ARG (Add_f3_f3, a1 + a2, V3f, V3f, V3f);
-DEFINE_SIMD_FUNC_2_ARG (Sub_f3_f3, a1 - a2, V3f, V3f, V3f);
-DEFINE_SIMD_FUNC_2_ARG (Cross_f3_f3, a1.cross(a2), V3f, V3f, V3f);
-DEFINE_SIMD_FUNC_2_ARG (Dot_f3_f3, a1.dot(a2), float, V3f, V3f);
-DEFINE_SIMD_FUNC_1_ARG (Length_f3, a1.length(), float, V3f);
+DEFINE_SIMD_FUNC_1_ARG (Acos, acos (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (Asin, asin (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (Atan, atan (a1), number, number);
+DEFINE_SIMD_FUNC_2_ARG (Atan2, atan2 (a1, a2), number, number, number);
+DEFINE_SIMD_FUNC_1_ARG (Cos, cos (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (Sin, sin (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (Tan, tan (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (Cosh, cosh (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (Sinh, sinh (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (Tanh, tanh (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (Exp, exp (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (ExpH, exp_h (a1), half, number);
+DEFINE_SIMD_FUNC_1_ARG (Log, log (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (LogH, log_h (a1), number, half);
+DEFINE_SIMD_FUNC_1_ARG (Log10, log10 (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (Log10H, log10_h (a1), number, half);
+DEFINE_SIMD_FUNC_2_ARG (Pow, pow (a1, a2), number, number, number);
+DEFINE_SIMD_FUNC_2_ARG (PowH, pow_h (a1, a2), half, half, number);
+DEFINE_SIMD_FUNC_1_ARG (Pow10, pow (10.0f, a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (Pow10H, pow10_h (a1), half, number);
+DEFINE_SIMD_FUNC_1_ARG (Sqrt, sqrt (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (Fabs, fabs (a1), number, number);
+DEFINE_SIMD_FUNC_1_ARG (Floor, floor (a1), number, number);
+DEFINE_SIMD_FUNC_2_ARG (Fmod, fmod (a1, a2), number, number, number);
+DEFINE_SIMD_FUNC_2_ARG (Hypot, hypot (a1, a2), number, number, number);
+DEFINE_SIMD_FUNC_2_ARG (Mult_f33_f33, a1 * a2, M33, M33, M33);
+DEFINE_SIMD_FUNC_2_ARG (Mult_f44_f44, a1 * a2, M44, M44, M44);
+DEFINE_SIMD_FUNC_2_ARG (Mult_f_f33, a1 * a2, M33, number, M33);
+DEFINE_SIMD_FUNC_2_ARG (Mult_f_f44, a1 * a2, M44, number, M44);
+DEFINE_SIMD_FUNC_2_ARG (Add_f33_f33, a1 + a2, M33, M33, M33);
+DEFINE_SIMD_FUNC_2_ARG (Add_f44_f44, a1 + a2, M44, M44, M44);
+DEFINE_SIMD_FUNC_1_ARG (Invert_f33, a1.inverse(), M33, M33);
+DEFINE_SIMD_FUNC_1_ARG (Invert_f44, a1.inverse(), M44, M44);
+DEFINE_SIMD_FUNC_1_ARG (Transpose_f33, a1.transposed(), M33, M33);
+DEFINE_SIMD_FUNC_1_ARG (Transpose_f44, a1.transposed(), M44, M44);
+DEFINE_SIMD_FUNC_2_ARG (Mult_f3_f33, a1 * a2, Vec3, Vec3, M33);
+DEFINE_SIMD_FUNC_2_ARG (Mult_f3_f44, a1 * a2, Vec3, Vec3, M44);
+DEFINE_SIMD_FUNC_2_ARG (Mult_f_f3, a1 * a2, Vec3, number, Vec3);
+DEFINE_SIMD_FUNC_2_ARG (Add_f3_f3, a1 + a2, Vec3, Vec3, Vec3);
+DEFINE_SIMD_FUNC_2_ARG (Sub_f3_f3, a1 - a2, Vec3, Vec3, Vec3);
+DEFINE_SIMD_FUNC_2_ARG (Cross_f3_f3, a1.cross(a2), Vec3, Vec3, Vec3);
+DEFINE_SIMD_FUNC_2_ARG (Dot_f3_f3, a1.dot(a2), number, Vec3, Vec3);
+DEFINE_SIMD_FUNC_1_ARG (Length_f3, a1.length(), number, Vec3);
 
 } // namespace
 

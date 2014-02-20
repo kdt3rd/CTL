@@ -69,6 +69,7 @@
 #include <ImathVec.h>
 #include <ImathBox.h>
 #include <vector>
+#include <CtlNumber.h>
 
 namespace Ctl {
 
@@ -90,7 +91,7 @@ class RbfInterpolator
     // shaped radial basis functions.
     //------------------------------------------------------------
 
-     RbfInterpolator (size_t n, const Imath::V3f p[/*n*/][2]);
+     RbfInterpolator (size_t n, const Vec3 p[/*n*/][2]);
     ~RbfInterpolator ();
 
     //---------------------------------------------------------------
@@ -104,21 +105,21 @@ class RbfInterpolator
     // gradient(x) returns the gradient of g(x).
     //---------------------------------------------------------------
 
-    Imath::V3f  value (const Imath::V3f &x) const;
-    Imath::V3f  gradient (const Imath::V3f &x) const;
+    Vec3  value (const Vec3 &x) const;
+    Vec3  gradient (const Vec3 &x) const;
 
 
   private:    
         
-    double	kernel (double val,  double sigma) const;
-    double	kernelGrad (double val, double sigma) const;
+    big_number	kernel (big_number val,  big_number sigma) const;
+    big_number	kernelGrad (big_number val, big_number sigma) const;
 
-    std::vector <Imath::V3f>	_samplePts;
+    std::vector <Vec3>	_samplePts;
     size_t			_numSamples;
-    std::vector <double>	_lambdas;
-    std::vector <double>	_sigmas;
-    std::vector <double>	_affine;
-    double			_maxSigma;
+    std::vector <big_number>	_lambdas;
+    std::vector <big_number>	_sigmas;
+    std::vector <big_number>	_affine;
+    big_number			_maxSigma;
     PointTree *			_pointTree;
 };
 

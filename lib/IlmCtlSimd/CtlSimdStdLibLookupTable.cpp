@@ -66,17 +66,17 @@
 #include <CtlSimdStdTypes.h>
 #include <CtlSimdCFunc.h>
 #include <CtlLookupTable.h>
+#include <CtlNumber.h>
 #include <half.h>
 #include <cmath>
 #include <cassert>
 
-using namespace Imath;
 using namespace std;
 
 namespace Ctl {
 namespace {
 
-typedef float (*Lookup1DFunc) (const float[], int, float, float, float);
+typedef number (*Lookup1DFunc) (const number[], int, number, number, number);
 
 
 void
@@ -115,17 +115,17 @@ simdDoLookup1D
 	    // Fast path -- only p is varying, everything else is uniform.
 	    //
 
-	    float *table0 = (float *)(table[0]);
-	    float pMin0 = *(float *)(pMin[0]);
-	    float pMax0 = *(float *)(pMax[0]);
+	    number *table0 = (number *)(table[0]);
+	    number pMin0 = *(number *)(pMin[0]);
+	    number pMax0 = *(number *)(pMax[0]);
 
 	    for (int i = xcontext.regSize(); --i >= 0;)
 	    {
-		*(float *)(returnValue[i]) = func (table0,
+		*(number *)(returnValue[i]) = func (table0,
 						   s,
 						   pMin0,
 						   pMax0,
-						   *(float *)(p[i]));
+						   *(number *)(p[i]));
 	    }
 	}
 	else
@@ -134,11 +134,11 @@ simdDoLookup1D
 	    {
 		if (mask[i])
 		{
-		    *(float *)(returnValue[i]) = func ((float *)(table[i]), 
+		    *(number *)(returnValue[i]) = func ((number *)(table[i]), 
 						       s,
-						       *(float *)(pMin[i]),
-						       *(float *)(pMax[i]),
-						       *(float *)(p[i]));
+						       *(number *)(pMin[i]),
+						       *(number *)(pMax[i]),
+						       *(number *)(p[i]));
 		}
 	    }
 	}
@@ -147,11 +147,11 @@ simdDoLookup1D
     {
 	returnValue.setVarying (false);
 
-	*(float *)(returnValue[0]) = func ((float *)(table[0]), 
+	*(number *)(returnValue[0]) = func ((number *)(table[0]), 
 					   s,
-					   *(float *)(pMin[0]),
-					   *(float *)(pMax[0]),
-					   *(float *)(p[0]));
+					   *(number *)(pMin[0]),
+					   *(number *)(pMax[0]),
+					   *(number *)(p[0]));
     }
 }
 
@@ -198,7 +198,7 @@ simdLookup3D_f3 (const SimdBoolMask &mask, SimdXContext &xcontext)
 
     assert (!size0.isVarying() && !size1.isVarying() && !size2.isVarying());
 
-    V3i s (*(int *)(size0[0]),
+    Vec3i s (*(int *)(size0[0]),
 	   *(int *)(size1[0]),
 	   *(int *)(size2[0]));
 
@@ -213,11 +213,11 @@ simdLookup3D_f3 (const SimdBoolMask &mask, SimdXContext &xcontext)
 	{
 	    if (mask[i])
 	    {
-		*(V3f *)(returnValue[i]) = lookup3D ((V3f *)(table[i]), 
+		*(Vec3 *)(returnValue[i]) = lookup3D ((Vec3 *)(table[i]), 
 						     s,
-						     *(V3f *)(pMin[i]),
-						     *(V3f *)(pMax[i]),
-						     *(V3f *)(p[i]));
+						     *(Vec3 *)(pMin[i]),
+						     *(Vec3 *)(pMax[i]),
+						     *(Vec3 *)(p[i]));
 	    }
 	}
     }
@@ -225,11 +225,11 @@ simdLookup3D_f3 (const SimdBoolMask &mask, SimdXContext &xcontext)
     {
 	returnValue.setVarying (false);
 
-	*(V3f *)(returnValue[0]) = lookup3D ((V3f *)(table[0]), 
+	*(Vec3 *)(returnValue[0]) = lookup3D ((Vec3 *)(table[0]), 
 					     s,
-					     *(V3f *)(pMin[0]),
-					     *(V3f *)(pMax[0]),
-					     *(V3f *)(p[0]));
+					     *(Vec3 *)(pMin[0]),
+					     *(Vec3 *)(pMax[0]),
+					     *(Vec3 *)(p[0]));
     }
 }
 
@@ -259,7 +259,7 @@ simdLookup3D_f (const SimdBoolMask &mask, SimdXContext &xcontext)
 
     assert (!size0.isVarying() && !size1.isVarying() && !size2.isVarying());
 
-    V3i s (*(int *)(size0[0]),
+    Vec3i s (*(int *)(size0[0]),
 	   *(int *)(size1[0]),
 	   *(int *)(size2[0]));
 
@@ -278,17 +278,17 @@ simdLookup3D_f (const SimdBoolMask &mask, SimdXContext &xcontext)
 	{
 	    if (mask[i])
 	    {
-		V3f p (*(float *)p0[i], *(float *)p1[i], *(float *)p2[i]);
+		Vec3 p (*(number *)p0[i], *(number *)p1[i], *(number *)p2[i]);
 
-		V3f q = lookup3D ((V3f *)(table[i]), 
+		Vec3 q = lookup3D ((Vec3 *)(table[i]), 
 				  s,
-				  *(V3f *)(pMin[i]),
-				  *(V3f *)(pMax[i]),
+				  *(Vec3 *)(pMin[i]),
+				  *(Vec3 *)(pMax[i]),
 				  p);
 
-		*(float *)q0[i] = q[0];
-		*(float *)q1[i] = q[1];
-		*(float *)q2[i] = q[2];
+		*(number *)q0[i] = q[0];
+		*(number *)q1[i] = q[1];
+		*(number *)q2[i] = q[2];
 	    }
 	}
     }
@@ -298,17 +298,17 @@ simdLookup3D_f (const SimdBoolMask &mask, SimdXContext &xcontext)
 	q1.setVarying (false);
 	q2.setVarying (false);
 
-	V3f p (*(float *)p0[0], *(float *)p1[0], *(float *)p2[0]);
+	Vec3 p (*(number *)p0[0], *(number *)p1[0], *(number *)p2[0]);
 
-	V3f q = lookup3D ((V3f *)(table[0]), 
+	Vec3 q = lookup3D ((Vec3 *)(table[0]), 
 			  s,
-			  *(V3f *)(pMin[0]),
-			  *(V3f *)(pMax[0]),
+			  *(Vec3 *)(pMin[0]),
+			  *(Vec3 *)(pMax[0]),
 			  p);
 
-	*(float *)q0[0] = q[0];
-	*(float *)q1[0] = q[1];
-	*(float *)q2[0] = q[2];
+	*(number *)q0[0] = q[0];
+	*(number *)q1[0] = q[1];
+	*(number *)q2[0] = q[2];
     }
 }
 
@@ -338,7 +338,7 @@ simdLookup3D_h (const SimdBoolMask &mask, SimdXContext &xcontext)
 
     assert (!size0.isVarying() && !size1.isVarying() && !size2.isVarying());
 
-    V3i s (*(int *)(size0[0]),
+    Vec3i s (*(int *)(size0[0]),
 	   *(int *)(size1[0]),
 	   *(int *)(size2[0]));
 
@@ -357,12 +357,12 @@ simdLookup3D_h (const SimdBoolMask &mask, SimdXContext &xcontext)
 	{
 	    if (mask[i])
 	    {
-		V3f p (*(half *)p0[i], *(half *)p1[i], *(half *)p2[i]);
+		Vec3 p (*(half *)p0[i], *(half *)p1[i], *(half *)p2[i]);
 
-		V3f q = lookup3D ((V3f *)(table[i]), 
+		Vec3 q = lookup3D ((Vec3 *)(table[i]), 
 				  s,
-				  *(V3f *)(pMin[i]),
-				  *(V3f *)(pMax[i]),
+				  *(Vec3 *)(pMin[i]),
+				  *(Vec3 *)(pMax[i]),
 				  p);
 
 		*(half *)q0[i] = q[0];
@@ -377,12 +377,12 @@ simdLookup3D_h (const SimdBoolMask &mask, SimdXContext &xcontext)
 	q1.setVarying (false);
 	q2.setVarying (false);
 
-	V3f p (*(half *)p0[0], *(half *)p1[0], *(half *)p2[0]);
+	Vec3 p (*(half *)p0[0], *(half *)p1[0], *(half *)p2[0]);
 
-	V3f q = lookup3D ((V3f *)(table[0]), 
+	Vec3 q = lookup3D ((Vec3 *)(table[0]), 
 			  s,
-			  *(V3f *)(pMin[0]),
-			  *(V3f *)(pMax[0]),
+			  *(Vec3 *)(pMin[0]),
+			  *(Vec3 *)(pMax[0]),
 			  p);
 
 	*(half *)q0[0] = q[0];
@@ -392,7 +392,7 @@ simdLookup3D_h (const SimdBoolMask &mask, SimdXContext &xcontext)
 }
 
 
-typedef float (*Interpolate1DFunc) (const float[][2], int, float);
+typedef number (*Interpolate1DFunc) (const number[][2], int, number);
 
 
 void
@@ -425,13 +425,13 @@ simdDoInterpolate1D
 	    // Fast path -- only p is varying, everything else is uniform.
 	    //
 
-	    float (*table0)[2] = (float (*)[2])(table[0]);
+	    number (*table0)[2] = (number (*)[2])(table[0]);
 
 	    for (int i = xcontext.regSize(); --i >= 0;)
 	    {
-		*(float *)(returnValue[i]) = func (table0,
+		*(number *)(returnValue[i]) = func (table0,
 						   s,
-						   *(float *)(p[i]));
+						   *(number *)(p[i]));
 	    }
 	}
 	else
@@ -440,9 +440,9 @@ simdDoInterpolate1D
 	    {
 		if (mask[i])
 		{
-		    *(float *)(returnValue[i]) = func ((float (*)[2])(table[i]),
+		    *(number *)(returnValue[i]) = func ((number (*)[2])(table[i]),
 						       s,
-						       *(float *)(p[i]));
+						       *(number *)(p[i]));
 		}
 	    }
 	}
@@ -451,9 +451,9 @@ simdDoInterpolate1D
     {
 	returnValue.setVarying (false);
 
-	*(float *)(returnValue[0]) = func ((float (*)[2])(table[0]), 
+	*(number *)(returnValue[0]) = func ((number (*)[2])(table[0]), 
 					   s,
-					   *(float *)(p[0]));
+					   *(number *)(p[0]));
     }
 }
 

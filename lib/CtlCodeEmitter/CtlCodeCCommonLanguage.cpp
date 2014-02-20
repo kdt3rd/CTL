@@ -774,7 +774,6 @@ CCommonLanguage::getStandardPrintBodies( FuncDeclList &d, const std::string &fun
 void
 CCommonLanguage::getStandardColorBodies( FuncDeclList &d, const std::string &funcPref, const std::string &precSuffix )
 {
-	std::cout << "Look at whether we should increase the accuracy of the colorspace utility functions" << std::endl;
 	std::string argvectype3 = "ctl_vec3f_t ";
 	std::string argchrom = "Chromaticities ";
 	std::string argmat44 = "ctl_mat44f_t ";
@@ -1201,10 +1200,26 @@ CCommonLanguage::getCode( bool calledOnly )
 		for ( size_t md = 0, nMD = myModules.size(); md != nMD; ++md )
 		{
 			ModuleDefinition &curMod = myModules[md];
-			curMod.typeCode.clear();
-			curMod.fwdCode.clear();
-			curMod.varCode.clear();
-			curMod.funCode.clear();
+			if ( curMod.typeCode )
+			{
+				delete curMod.typeCode;
+				curMod.typeCode = NULL;
+			}
+			if ( curMod.fwdCode )
+			{
+				delete curMod.fwdCode;
+				curMod.fwdCode = NULL;
+			}
+			if ( curMod.varCode )
+			{
+				delete curMod.varCode;
+				curMod.varCode = NULL;
+			}
+			if ( curMod.funCode )
+			{
+				delete curMod.funCode;
+				curMod.funCode = NULL;
+			}
 			curMod.initCode.clear();
 			indexmap[curMod.module] = md;
 			for ( size_t t = 0, nT = curMod.types.size(); t != nT; ++t )
@@ -1238,17 +1253,26 @@ CCommonLanguage::getCode( bool calledOnly )
 		{
 			ModuleDefinition *curMod = theMains[mf].first;
 			FunctionDefinition *curFunc = theMains[mf].second;
-			std::stringstream mainCode;
-			pushStream( mainCode );
+			if ( ! curMod->funCode )
+				curMod->funCode = new std::stringstream;
+			pushStream( *(curMod->funCode) );
 			traverseAndEmit( indexmap, *curFunc );
 			popStream();
-			curMod->funCode.append( mainCode.str() );
 		}
 
 		for ( size_t md = 0, nMD = myModules.size(); md != nMD; ++md )
 		{
 			ModuleDefinition &curMod = myModules[md];
-			if ( curMod.typeCode.empty() && curMod.varCode.empty() && curMod.fwdCode.empty() && curMod.funCode.empty() )
+			std::string tC, vC, fC, fnC;
+			if ( curMod.typeCode )
+				tC = curMod.typeCode->str();
+			if ( curMod.varCode )
+				vC = curMod.varCode->str();
+			if ( curMod.fwdCode )
+				fC = curMod.fwdCode->str();
+			if ( curMod.funCode )
+				fnC = curMod.funCode->str();
+			if ( tC.empty() && vC.empty() && fC.empty() && fnC.empty() )
 				continue;
 
 			if ( ! curMod.prefix.empty() )
@@ -1256,25 +1280,25 @@ CCommonLanguage::getCode( bool calledOnly )
 				newlineAndIndent();
 				curStream() << curMod.prefix;
 			}
-			if ( ! curMod.typeCode.empty() )
+			if ( ! tC.empty() )
 			{
 				newlineAndIndent();
-				curStream() << curMod.typeCode;
+				curStream() << tC;
 			}
-			if ( ! curMod.fwdCode.empty() )
+			if ( ! fC.empty() )
 			{
 				newlineAndIndent();
-				curStream() << curMod.fwdCode;
+				curStream() << fC;
 			}
-			if ( ! curMod.varCode.empty() )
+			if ( ! vC.empty() )
 			{
 				newlineAndIndent();
-				curStream() << curMod.varCode;
+				curStream() << vC;
 			}
-			if ( ! curMod.funCode.empty() )
+			if ( ! fnC.empty() )
 			{
 				newlineAndIndent();
-				curStream() << curMod.funCode;
+				curStream() << fnC;
 			}
 
 			if ( ! curMod.initCode.empty() )
@@ -1429,8 +1453,9 @@ CCommonLanguage::recurseUsage( const std::map<const Module *, size_t> &indexmap,
 		std::set<std::string>::iterator curUse;
 		if ( ! modUse.types.empty() )
 		{
-			std::stringstream liveCode;
-			pushStream( liveCode );
+			if ( ! curMod.typeCode )
+				curMod.typeCode = new std::stringstream;
+			pushStream( *(curMod.typeCode) );
 			curUse = modUse.types.begin();
 			while ( curUse != modUse.types.end() )
 			{
@@ -1445,13 +1470,13 @@ CCommonLanguage::recurseUsage( const std::map<const Module *, size_t> &indexmap,
 				++curUse;
 			}
 			popStream();
-			curMod.typeCode.append( liveCode.str() );
 		}
 
 		if ( ! modUse.variables.empty() )
 		{
-			std::stringstream liveCode;
-			pushStream( liveCode );
+			if ( ! curMod.varCode )
+				curMod.varCode = new std::stringstream;
+			pushStream( *(curMod.varCode) );
 			std::stringstream initDest;
 			std::stringstream *curDest = myCurInitDestination;
 			myCurInitDestination = &initDest;
@@ -1472,15 +1497,15 @@ CCommonLanguage::recurseUsage( const std::map<const Module *, size_t> &indexmap,
 			curMod.initCode.append( initDest.str() );
 
 			popStream();
-			curMod.varCode.append( liveCode.str() );
 		}
 
 		if ( ! modUse.functions.empty() )
 		{
 			if ( curModule && curModule == curMod.module )
 			{
-				std::stringstream liveCode;
-				pushStream( liveCode );
+				if ( ! curMod.fwdCode )
+					curMod.fwdCode = new std::stringstream;
+				pushStream( *(curMod.fwdCode) );
 				curUse = modUse.functions.begin();
 				while ( curUse != modUse.functions.end() )
 				{
@@ -1495,11 +1520,11 @@ CCommonLanguage::recurseUsage( const std::map<const Module *, size_t> &indexmap,
 					++curUse;
 				}
 				popStream();
-				curMod.fwdCode.append( liveCode.str() );
 			}
 
-			std::stringstream liveCode;
-			pushStream( liveCode );
+			if ( ! curMod.funCode )
+				curMod.funCode = new std::stringstream;
+			pushStream( *(curMod.funCode) );
 			curUse = modUse.functions.begin();
 			while ( curUse != modUse.functions.end() )
 			{
@@ -1514,7 +1539,6 @@ CCommonLanguage::recurseUsage( const std::map<const Module *, size_t> &indexmap,
 				++curUse;
 			}
 			popStream();
-			curMod.funCode.append( liveCode.str() );
 		}
 	}
 }
@@ -2430,7 +2454,10 @@ CCommonLanguage::boolLit( CodeLContext &ctxt, const CodeBoolLiteralNode &v )
 void
 CCommonLanguage::intLit( CodeLContext &ctxt, const CodeIntLiteralNode &v )
 {
-	curStream() << v.value;
+	if ( v.literal.empty() )
+		curStream() << v.value;
+	else
+		curStream() << v.literal;
 }
 
 
@@ -2440,7 +2467,10 @@ CCommonLanguage::intLit( CodeLContext &ctxt, const CodeIntLiteralNode &v )
 void
 CCommonLanguage::uintLit( CodeLContext &ctxt, const CodeUIntLiteralNode &v )
 {
-	curStream() << v.value;
+	if ( v.literal.empty() )
+		curStream() << v.value;
+	else
+		curStream() << v.literal;
 }
 
 
@@ -2456,7 +2486,11 @@ CCommonLanguage::halfLit( CodeLContext &ctxt, const CodeHalfLiteralNode &v )
 					"Language does not support the half data type" );
 		throw std::logic_error( "Language does not support half" );
 	}
-	curStream() << "half( " << std::setprecision( std::numeric_limits<half>::digits ) << static_cast<float>( v.value ) << "F )";
+
+	if ( v.literal.empty() )
+		curStream() << "half( " << std::setprecision( std::numeric_limits<half>::digits ) << static_cast<number>( v.value ) << "F )";
+	else
+		curStream() << "half( " << v.literal << " )";
 }
 
 
@@ -2466,7 +2500,10 @@ CCommonLanguage::halfLit( CodeLContext &ctxt, const CodeHalfLiteralNode &v )
 void
 CCommonLanguage::floatLit( CodeLContext &ctxt, const CodeFloatLiteralNode &v )
 {
-	curStream() << std::fixed << std::setprecision( std::numeric_limits<float>::digits ) << static_cast<float>( v.value ) << getPrecisionTypeSuffix();
+	if ( v.literal.empty() )
+		curStream() << std::fixed << std::setprecision( std::numeric_limits<number>::digits ) << static_cast<number>( v.value ) << getPrecisionTypeSuffix();
+	else
+		curStream() << v.literal;
 }
 
 
@@ -2710,6 +2747,7 @@ CCommonLanguage::emitToken( Token t )
 		case TK_TIMES: curStream() << "*"; break;
 
 		case TK_EQUAL: curStream() << "=="; break;
+		case TK_NOTEQUAL: curStream() << "!="; break;
 		case TK_GREATER: curStream() << ">"; break;
 		case TK_GREATEREQUAL: curStream() << ">="; break;
 		case TK_LESS: curStream() << "<"; break;

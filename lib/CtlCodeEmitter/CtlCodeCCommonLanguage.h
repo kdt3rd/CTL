@@ -173,8 +173,8 @@ protected:
 
 	struct ModuleDefinition
 	{
-		inline ModuleDefinition( void ) : module( NULL ) {}
-
+		inline ModuleDefinition( void ) : module( NULL ), typeCode( NULL ), fwdCode( NULL ), varCode( NULL ), funCode( NULL ) {}
+		inline ~ModuleDefinition( void ) { delete typeCode; delete fwdCode; delete varCode; delete funCode; }
 		const Module *module;
 		std::string name;
 		std::string call_prefix;
@@ -184,10 +184,10 @@ protected:
 		std::vector<GlobalVariableDefinition> variables;
 		FuncDeclList functions;
 		std::string headerCode;
-		std::string typeCode;
-		std::string fwdCode;
-		std::string varCode;
-		std::string funCode;
+		std::stringstream *typeCode;
+		std::stringstream *fwdCode;
+		std::stringstream *varCode;
+		std::stringstream *funCode;
 		std::string initCode;
 	};
 

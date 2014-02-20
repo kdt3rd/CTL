@@ -104,36 +104,36 @@
 //
 //-----------------------------------------------------------------------------
 
-#include <ImathVec.h>
+#include <CtlNumber.h>
 
 namespace Ctl {
 
-float	 	lookup1D (const float table[],
+number	 	lookup1D (const number table[],
 			  int size,
-			  float pMin,
-			  float pMax,
-			  float p);
+			  number pMin,
+			  number pMax,
+			  number p);
 
 
-float	 	lookupCubic1D (const float table[],
+number	 	lookupCubic1D (const number table[],
 			       int size,
-			       float pMin,
-			       float pMax,
-			       float p);
+			       number pMin,
+			       number pMax,
+			       number p);
 
-Imath::V3f	lookup3D (const Imath::V3f table[],
-			  const Imath::V3i &size,
-			  const Imath::V3f &pMin,
-			  const Imath::V3f &pMax,
-			  const Imath::V3f &p);
+Vec3	lookup3D (const Vec3 table[],
+			  const Vec3i &size,
+			  const Vec3 &pMin,
+			  const Vec3 &pMax,
+			  const Vec3 &p);
 
-float		interpolate1D (const float table[][2],
+number		interpolate1D (const number table[][2],
 			       int size,
-			       float p);
+			       number p);
 
-float		interpolateCubic1D (const float table[][2],
+number		interpolateCubic1D (const number table[][2],
 				    int size,
-				    float p);
+				    number p);
 
 } // namespace Ctl
 

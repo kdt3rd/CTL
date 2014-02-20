@@ -428,8 +428,9 @@ CodeNameNode::generateCode( LContext &ctxt )
 
 CodeBoolLiteralNode::CodeBoolLiteralNode( int lineNumber,
 										  const LContext &lcontext,
-										  bool value )
-		: BoolLiteralNode( lineNumber, lcontext, value )
+										  bool value,
+										  const std::string &raw )
+		: BoolLiteralNode( lineNumber, lcontext, value, raw )
 {
 }
 
@@ -452,8 +453,9 @@ CodeBoolLiteralNode::valuePtr( void )
 
 CodeIntLiteralNode::CodeIntLiteralNode( int lineNumber,
 										const LContext &lcontext,
-										int value )
-		: IntLiteralNode( lineNumber, lcontext, value )
+										int value,
+										const std::string &raw )
+		: IntLiteralNode( lineNumber, lcontext, value, raw )
 {
 }
 
@@ -476,8 +478,9 @@ CodeIntLiteralNode::valuePtr( void )
 
 CodeUIntLiteralNode::CodeUIntLiteralNode( int lineNumber,
 										  const LContext &lcontext,
-										  unsigned int value )
-		: UIntLiteralNode( lineNumber, lcontext, value )
+										  unsigned int value,
+										  const std::string &raw )
+		: UIntLiteralNode( lineNumber, lcontext, value, raw )
 {
 }
 
@@ -500,8 +503,9 @@ CodeUIntLiteralNode::valuePtr( void )
 
 CodeHalfLiteralNode::CodeHalfLiteralNode( int lineNumber,
 										  const LContext &lcontext,
-										  half value )
-		: HalfLiteralNode( lineNumber, lcontext, value )
+										  half value,
+										  const std::string &raw )
+		: HalfLiteralNode( lineNumber, lcontext, value, raw )
 {
 }
 
@@ -524,8 +528,9 @@ CodeHalfLiteralNode::valuePtr( void )
 
 CodeFloatLiteralNode::CodeFloatLiteralNode( int lineNumber,
 											const LContext &lcontext,
-											float value )
-		: FloatLiteralNode( lineNumber, lcontext, value )
+											number value,
+											const std::string &raw )
+		: FloatLiteralNode( lineNumber, lcontext, value, raw )
 {
 }
 

@@ -68,6 +68,7 @@
 #include <CtlRbfInterpolator.h>
 #include <ImathFun.h>
 #include <cassert>
+#include <CtlNumber.h>
 
 using namespace Imath;
 using namespace std;
@@ -77,32 +78,32 @@ namespace {
 
 void
 scatteredDataToGrid3D (int dataSize,
-		       const Imath::V3f data[][2],
-		       const V3f &pMin,
-		       const V3f &pMax,
-		       const V3i &gridSize,
-		       V3f grid[])
+		       const Vec3 data[][2],
+		       const Vec3 &pMin,
+		       const Vec3 &pMax,
+		       const Vec3i &gridSize,
+		       Vec3 grid[])
 {
     RbfInterpolator interp (dataSize, data);
 
-    float s, t;
-    V3f p;
+    number s, t;
+    Vec3 p;
 
     for (int i = 0; i < gridSize.x; ++i)
     {
-        s = float (i) / float (gridSize.x - 1);
+        s = number (i) / number (gridSize.x - 1);
         t = 1 - s;
         p.x = pMin.x * t + pMax.x * s;
         
         for (int j = 0; j < gridSize.y; ++j)
         {
-            s = float (j) / float (gridSize.y - 1);
+            s = number (j) / number (gridSize.y - 1);
             t = 1 - s;
             p.y = pMin.y * t + pMax.y * s;
             
             for (int k = 0; k < gridSize.z; ++k)
             {
-                s = float (k) / float (gridSize.z - 1);
+                s = number (k) / number (gridSize.z - 1);
                 t = 1 - s;
                 p.z = pMin.z * t + pMax.z * s;
                 
@@ -136,14 +137,14 @@ simdScatteredDataToGrid3D (const SimdBoolMask &mask, SimdXContext &xcontext)
 	    !gridSize1.isVarying() &&
 	    !gridSize2.isVarying());
 
-    V3i gridSize (*(int *)(gridSize0[0]),
+    Vec3i gridSize (*(int *)(gridSize0[0]),
 	          *(int *)(gridSize1[0]),
 		  *(int *)(gridSize2[0]));
 
     int dataSize = *(int *)(dataSize0[0]);
 
-    typedef const V3f (*DataPtr)[2];
-    typedef V3f *GridPtr;
+    typedef const Vec3 (*DataPtr)[2];
+    typedef Vec3 *GridPtr;
 
     if (data.isVarying() ||
         pMin.isVarying() ||
@@ -157,8 +158,8 @@ simdScatteredDataToGrid3D (const SimdBoolMask &mask, SimdXContext &xcontext)
 	    {
 		scatteredDataToGrid3D (dataSize,
 				       (DataPtr)(data[i]),
-				       *(const V3f *)(pMin[i]),
-				       *(const V3f *)(pMax[i]),
+				       *(const Vec3 *)(pMin[i]),
+				       *(const Vec3 *)(pMax[i]),
 				       gridSize,
 				       (GridPtr)(grid[i]));
 	    }
@@ -170,8 +171,8 @@ simdScatteredDataToGrid3D (const SimdBoolMask &mask, SimdXContext &xcontext)
 
 	scatteredDataToGrid3D (dataSize,
 			       (DataPtr)(data[0]),
-			       *(const V3f *)(pMin[0]),
-			       *(const V3f *)(pMax[0]),
+			       *(const Vec3 *)(pMin[0]),
+			       *(const Vec3 *)(pMax[0]),
 			       gridSize,
 			       (GridPtr)(grid[0]));
     }

@@ -64,6 +64,7 @@
 //
 //-----------------------------------------------------------------------------
 
+#include <CtlNumber.h>
 #include <CtlLContext.h>
 #include <CtlTokens.h>
 #include <string>
@@ -117,7 +118,7 @@ class Lex
     //--------------------------
 
     int			tokenIntValue () const	   {return _tokenIntValue;}
-    float		tokenFloatValue () const   {return _tokenFloatValue;}
+    number		tokenFloatValue () const   {return _tokenFloatValue;}
     const std::string &	tokenStringValue () const  {return _tokenStringValue;}
 
 
@@ -161,7 +162,7 @@ class Lex
     int			_currentLineNumber;
     Token		_token;
     int			_tokenIntValue;
-    float		_tokenFloatValue;
+    number		_tokenFloatValue;
     std::string		_tokenStringValue;
 };
 

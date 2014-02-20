@@ -227,7 +227,8 @@ struct SimdBoolLiteralNode: public BoolLiteralNode
 {
     SimdBoolLiteralNode (int lineNumber,
 			 const LContext &lcontext,
-			 bool value);
+			 bool value,
+			 const std::string &raw);
 
     virtual void	generateCode (LContext &lcontext);
     virtual char*       valuePtr();
@@ -238,7 +239,8 @@ struct SimdIntLiteralNode: public IntLiteralNode
 {
     SimdIntLiteralNode (int lineNumber,
 			const LContext &lcontext,
-			int value);
+			int value,
+			const std::string &raw);
 
     virtual void	generateCode (LContext &lcontext);
     virtual char*       valuePtr();
@@ -249,7 +251,8 @@ struct SimdUIntLiteralNode: public UIntLiteralNode
 {
     SimdUIntLiteralNode (int lineNumber,
 			 const LContext &lcontext,
-			 unsigned int value);
+			 unsigned int value,
+			 const std::string &raw);
 
     virtual void	generateCode (LContext &lcontext);
     virtual char*       valuePtr();
@@ -260,7 +263,8 @@ struct SimdHalfLiteralNode: public HalfLiteralNode
 {
     SimdHalfLiteralNode (int lineNumber,
 			 const LContext &lcontext,
-			 half value);
+			 half value,
+			 const std::string &raw);
 
     virtual void	generateCode (LContext &lcontext);
     virtual char*       valuePtr();
@@ -271,7 +275,8 @@ struct SimdFloatLiteralNode: public FloatLiteralNode
 {
     SimdFloatLiteralNode (int lineNumber,
 			  const LContext &lcontext,
-			  float value);
+			  number value,
+			  const std::string &raw);
 
     virtual void	generateCode (LContext &lcontext);
     virtual char*       valuePtr();

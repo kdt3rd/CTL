@@ -342,37 +342,37 @@ SimdLContext::newNameNode
 
 
 BoolLiteralNodePtr
-SimdLContext::newBoolLiteralNode (int lineNumber, bool value) const
+SimdLContext::newBoolLiteralNode (int lineNumber, bool value, const std::string &raw) const
 {
-    return new SimdBoolLiteralNode (lineNumber, *this, value);
+    return new SimdBoolLiteralNode (lineNumber, *this, value, raw);
 }
 
 
 IntLiteralNodePtr
-SimdLContext::newIntLiteralNode (int lineNumber, int value) const
+SimdLContext::newIntLiteralNode (int lineNumber, int value, const std::string &raw) const
 {
-    return new SimdIntLiteralNode (lineNumber, *this, value);
+    return new SimdIntLiteralNode (lineNumber, *this, value, raw);
 }
 
 
 UIntLiteralNodePtr
-SimdLContext::newUIntLiteralNode (int lineNumber, unsigned value) const
+SimdLContext::newUIntLiteralNode (int lineNumber, unsigned value, const std::string &raw) const
 {
-    return new SimdUIntLiteralNode (lineNumber, *this, value);
+    return new SimdUIntLiteralNode (lineNumber, *this, value, raw);
 }
 
 
 HalfLiteralNodePtr
-SimdLContext::newHalfLiteralNode (int lineNumber, half value) const
+SimdLContext::newHalfLiteralNode (int lineNumber, half value, const std::string &raw) const
 {
-    return new SimdHalfLiteralNode (lineNumber, *this, value);
+    return new SimdHalfLiteralNode (lineNumber, *this, value, raw);
 }
 
 
 FloatLiteralNodePtr
-SimdLContext::newFloatLiteralNode (int lineNumber, float value) const
+SimdLContext::newFloatLiteralNode (int lineNumber, number value, const std::string &raw) const
 {
-    return new SimdFloatLiteralNode (lineNumber, *this, value);
+    return new SimdFloatLiteralNode (lineNumber, *this, value, raw);
 }
 
 

@@ -1899,14 +1899,14 @@ Parser::parsePrimaryExpression ()
     {
 	debugSyntax1 ("true");
 	next();
-	return _lcontext.newBoolLiteralNode (currentLineNumber(), true);
+	return _lcontext.newBoolLiteralNode (currentLineNumber(), true, std::string());
     }
 
     if (token() == TK_FALSE)
     {
 	debugSyntax1 ("false");
 	next();
-	return _lcontext.newBoolLiteralNode (currentLineNumber(), false);
+	return _lcontext.newBoolLiteralNode (currentLineNumber(), false, std::string());
     }
 
     if (token() == TK_INTLITERAL)
@@ -1914,23 +1914,23 @@ Parser::parsePrimaryExpression ()
 	int value = tokenIntValue();
 	debugSyntax1 ("int literal " << value);
 	next();
-	return _lcontext.newIntLiteralNode (currentLineNumber(), value);
+	return _lcontext.newIntLiteralNode (currentLineNumber(), value, tokenStringValue());
     }
 
     if (token() == TK_FLOATLITERAL)
     {
-	float value = tokenFloatValue();
-	debugSyntax1 ("32-bit float literal " << value);
+	number value = tokenFloatValue();
+	debugSyntax1 ("higher precision float literal " << value);
 	next();
-	return _lcontext.newFloatLiteralNode (currentLineNumber(), value);
+	return _lcontext.newFloatLiteralNode (currentLineNumber(), value, tokenStringValue());
     }
 
     if (token() == TK_HALFLITERAL)
     {
-	float value = tokenFloatValue();
+	number value = tokenFloatValue();
 	debugSyntax1 ("16-bit float literal " << value);
 	next();
-	return _lcontext.newHalfLiteralNode (currentLineNumber(), value);
+	return _lcontext.newHalfLiteralNode (currentLineNumber(), static_cast<float>(value), tokenStringValue());
     }
 
     if (token() == TK_STRINGLITERAL)
@@ -2868,7 +2868,7 @@ Parser::tokenIntValue () const
 }
 
 
-float
+number
 Parser::tokenFloatValue () const
 {
     return _lex.tokenFloatValue();

@@ -891,11 +891,11 @@ SizeNode::evaluate (LContext &lcontext)
     ArrayTypePtr arrayType = obj->type.cast<ArrayType>();
     if( !arrayType)
     {
-	return lcontext.newIntLiteralNode (lineNumber, 1);
+	return lcontext.newIntLiteralNode (lineNumber, 1, std::string("1"));
     }
     else if( arrayType->size() != 0 )
     {
-	return lcontext.newIntLiteralNode (lineNumber, arrayType->size());
+	return lcontext.newIntLiteralNode (lineNumber, arrayType->size(), std::string());
     }
     return this;
 }
@@ -1117,8 +1117,8 @@ NameNode::isLvalue (const SymbolInfoPtr &initInfo) const
 }
 
 
-LiteralNode::LiteralNode (int lineNumber):
-    ExprNode (lineNumber)
+LiteralNode::LiteralNode (int lineNumber, const std::string &raw):
+    ExprNode (lineNumber), literal (raw)
 {
     // empty
 }
@@ -1148,9 +1148,10 @@ LiteralNode::isLvalue (const SymbolInfoPtr &initInfo) const
 BoolLiteralNode::BoolLiteralNode
     (int lineNumber,
      const LContext &lcontext,
-     bool value)
+     bool value,
+	 const std::string &raw)
 :
-    LiteralNode (lineNumber),
+	LiteralNode (lineNumber, raw),
     value (value)
 {
     type = lcontext.newBoolType ();
@@ -1173,9 +1174,10 @@ BoolLiteralNode::printLiteral () const
 IntLiteralNode::IntLiteralNode
     (int lineNumber,
      const LContext &lcontext,
-     int value)
+     int value,
+	 const std::string &raw)
 :
-    LiteralNode (lineNumber),
+    LiteralNode (lineNumber, raw),
     value (value)
 {
     type = lcontext.newIntType ();
@@ -1197,9 +1199,10 @@ IntLiteralNode::printLiteral () const
 UIntLiteralNode::UIntLiteralNode
     (int lineNumber,
      const LContext &lcontext,
-     unsigned int value)
+     unsigned int value,
+	 const std::string &raw)
 :
-    LiteralNode (lineNumber),
+    LiteralNode (lineNumber, raw),
     value (value)
 {
     type = lcontext.newUIntType ();
@@ -1222,9 +1225,10 @@ UIntLiteralNode::printLiteral () const
 HalfLiteralNode::HalfLiteralNode
     (int lineNumber,
      const LContext &lcontext,
-     half value)
+     half value,
+	 const std::string &raw)
 :
-    LiteralNode (lineNumber),
+    LiteralNode (lineNumber, raw),
     value (value)
 {
     type = lcontext.newHalfType ();
@@ -1246,9 +1250,10 @@ HalfLiteralNode::printLiteral () const
 FloatLiteralNode::FloatLiteralNode
     (int lineNumber,
      const LContext &lcontext,
-     float value)
+     number value,
+	 const std::string &raw)
 :
-    LiteralNode (lineNumber),
+	LiteralNode (lineNumber, raw),
     value (value)
 {
     type = lcontext.newFloatType ();
@@ -1272,7 +1277,7 @@ StringLiteralNode::StringLiteralNode
      const LContext &lcontext,
      const string &value)
 :
-    LiteralNode (lineNumber),
+    LiteralNode (lineNumber, std::string()),
     value (value)
 {
     type = lcontext.newStringType ();

@@ -614,21 +614,21 @@ CodeFloatType::CodeFloatType( void )
 size_t
 CodeFloatType::objectSize( void ) const
 {
-	return sizeof( float );
+	return sizeof( number );
 }
 
 
 size_t
 CodeFloatType::alignedObjectSize( void ) const
 {
-	return sizeof( float );
+	return sizeof( number );
 }
 
 
 size_t
 CodeFloatType::objectAlignment( void ) const
 {
-	return sizeof( float );
+	return sizeof( number );
 }
 
 

@@ -192,7 +192,7 @@ SimdBoolType::generateCastFrom
 
     if (expr->type.cast<FloatType>())
     {
-	slcontext.addInst (new SimdUnaryOpInst <float, bool, CopyOp>
+	slcontext.addInst (new SimdUnaryOpInst <number, bool, CopyOp>
 			   (expr->lineNumber));
 	return;
     }
@@ -428,7 +428,7 @@ SimdIntType::generateCastFrom
 
     if (expr->type.cast<FloatType>())
     {
-	slcontext.addInst (new SimdUnaryOpInst <float, int, CopyOp>
+	slcontext.addInst (new SimdUnaryOpInst <number, int, CopyOp>
 			   (expr->lineNumber));
 	return;
     }
@@ -684,7 +684,7 @@ SimdUIntType::generateCastFrom
 
     if (expr->type.cast<FloatType>())
     {
-	slcontext.addInst (new SimdUnaryOpInst <float, unsigned, CopyOp>
+	slcontext.addInst (new SimdUnaryOpInst <number, unsigned, CopyOp>
 			   (expr->lineNumber));
 	return;
     }
@@ -945,7 +945,7 @@ SimdHalfType::generateCastFrom
 
     if (expr->type.cast<FloatType>())
     {
-	slcontext.addInst (new SimdUnaryOpInst <float, half, CopyOp>
+	slcontext.addInst (new SimdUnaryOpInst <number, half, CopyOp>
 			   (expr->lineNumber));
 	return;
     }
@@ -1109,21 +1109,21 @@ SimdFloatType::SimdFloatType (): FloatType ()
 size_t
 SimdFloatType::objectSize () const
 {
-    return sizeof (float);
+    return sizeof (number);
 }
 
 
 size_t
 SimdFloatType::alignedObjectSize () const
 {
-    return sizeof (float);
+    return sizeof (number);
 }
 
 
 size_t
 SimdFloatType::objectAlignment () const
 {
-    return sizeof (float);
+    return sizeof (number);
 }
 
 
@@ -1136,28 +1136,28 @@ SimdFloatType::generateCastFrom
 
     if (expr->type.cast<BoolType>())
     {
-	slcontext.addInst (new SimdUnaryOpInst <bool, float, CopyOp>
+	slcontext.addInst (new SimdUnaryOpInst <bool, number, CopyOp>
 			   (expr->lineNumber));
 	return;
     }
 
     if (expr->type.cast<IntType>())
     {
-	slcontext.addInst (new SimdUnaryOpInst <int, float, CopyOp>
+	slcontext.addInst (new SimdUnaryOpInst <int, number, CopyOp>
 			   (expr->lineNumber));
 	return;
     }
 
     if (expr->type.cast<UIntType>())
     {
-	slcontext.addInst (new SimdUnaryOpInst <unsigned, float, CopyOp>
+	slcontext.addInst (new SimdUnaryOpInst <unsigned, number, CopyOp>
 			   (expr->lineNumber));
 	return;
     }
 
     if (expr->type.cast<HalfType>())
     {
-	slcontext.addInst (new SimdUnaryOpInst <half, float, CopyOp>
+	slcontext.addInst (new SimdUnaryOpInst <half, number, CopyOp>
 			   (expr->lineNumber));
 	return;
     }
@@ -1193,7 +1193,7 @@ SimdFloatType::generateCode
 	{
 	  case TK_MINUS:
 	    slcontext.addInst
-		(new SimdUnaryOpInst <float, float, UnaryMinusOp>
+		(new SimdUnaryOpInst <number, number, UnaryMinusOp>
 		 (node->lineNumber));
 	    break;
 
@@ -1214,61 +1214,61 @@ SimdFloatType::generateCode
 	{
 	  case TK_DIV:
 	    slcontext.addInst
-		(new SimdBinaryOpInst <float, float, float, DivOp>
+		(new SimdBinaryOpInst <number, number, number, DivOp>
 		 (node->lineNumber));
 	    break;
 
 	  case TK_EQUAL:
 	    slcontext.addInst
-		(new SimdBinaryOpInst <float, float, bool, EqualOp>
+		(new SimdBinaryOpInst <number, number, bool, EqualOp>
 		 (node->lineNumber));
 	    break;
 
 	  case TK_GREATER:
 	    slcontext.addInst
-		(new SimdBinaryOpInst <float, float, bool, GreaterOp>
+		(new SimdBinaryOpInst <number, number, bool, GreaterOp>
 		 (node->lineNumber));
 	    break;
 
 	  case TK_GREATEREQUAL:
 	    slcontext.addInst
-		(new SimdBinaryOpInst <float, float, bool, GreaterEqualOp>
+		(new SimdBinaryOpInst <number, number, bool, GreaterEqualOp>
 		 (node->lineNumber));
 	    break;
 
 	  case TK_LESS:
 	    slcontext.addInst
-		(new SimdBinaryOpInst <float, float, bool, LessOp>
+		(new SimdBinaryOpInst <number, number, bool, LessOp>
 		 (node->lineNumber));
 	    break;
 
 	  case TK_LESSEQUAL:
 	    slcontext.addInst
-		(new SimdBinaryOpInst <float, float, bool, LessEqualOp>
+		(new SimdBinaryOpInst <number, number, bool, LessEqualOp>
 		 (node->lineNumber));
 	    break;
 
 	  case TK_MINUS:
 	    slcontext.addInst
-		(new SimdBinaryOpInst <float, float, float, BinaryMinusOp>
+		(new SimdBinaryOpInst <number, number, number, BinaryMinusOp>
 		 (node->lineNumber));
 	    break;
 
 	  case TK_NOTEQUAL:
 	    slcontext.addInst
-		(new SimdBinaryOpInst <float, float, bool, NotEqualOp>
+		(new SimdBinaryOpInst <number, number, bool, NotEqualOp>
 		 (node->lineNumber));
 	    break;
 
 	  case TK_PLUS:
 	    slcontext.addInst
-		(new SimdBinaryOpInst <float, float, float, PlusOp>
+		(new SimdBinaryOpInst <number, number, number, PlusOp>
 		 (node->lineNumber));
 	    break;
 
 	  case TK_TIMES:
 	    slcontext.addInst
-		(new SimdBinaryOpInst <float, float, float, TimesOp>
+		(new SimdBinaryOpInst <number, number, number, TimesOp>
 		 (node->lineNumber));
 	    break;
 

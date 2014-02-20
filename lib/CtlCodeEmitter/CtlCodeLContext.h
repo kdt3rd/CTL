@@ -152,15 +152,15 @@ public:
 										 const std::string &name,
 										 const SymbolInfoPtr &info ) const;
 
-    virtual BoolLiteralNodePtr	newBoolLiteralNode( int lineNumber, bool value ) const;
+    virtual BoolLiteralNodePtr	newBoolLiteralNode( int lineNumber, bool value, const std::string &raw ) const;
 
-    virtual IntLiteralNodePtr	newIntLiteralNode( int lineNumber, int value ) const;
+    virtual IntLiteralNodePtr	newIntLiteralNode( int lineNumber, int value, const std::string &raw ) const;
 
-    virtual UIntLiteralNodePtr	newUIntLiteralNode( int lineNumber, unsigned value ) const;
+    virtual UIntLiteralNodePtr	newUIntLiteralNode( int lineNumber, unsigned value, const std::string &raw ) const;
 
-    virtual HalfLiteralNodePtr	newHalfLiteralNode( int lineNumber, half value ) const;
+    virtual HalfLiteralNodePtr	newHalfLiteralNode( int lineNumber, half value, const std::string &raw ) const;
 
-    virtual FloatLiteralNodePtr	newFloatLiteralNode( int lineNumber, float value ) const;
+    virtual FloatLiteralNodePtr	newFloatLiteralNode( int lineNumber, number value, const std::string &raw ) const;
 
     virtual StringLiteralNodePtr newStringLiteralNode( int lineNumber,
 													   const std::string &value ) const;

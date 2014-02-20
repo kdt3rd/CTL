@@ -52,6 +52,7 @@
 // THAN A.M.P.A.S., WHETHER DISCLOSED OR UNDISCLOSED.
 ///////////////////////////////////////////////////////////////////////////
 
+#include <CtlNumber.h>
 #include <CtlStdType.h>
 #include <cassert>
 #include <CtlErrors.h>
@@ -193,15 +194,15 @@ StdFloatType::StdFloatType() : FloatType() {
 }
 
 size_t StdFloatType::objectSize() const {
-	return sizeof(float);
+	return sizeof(number);
 }
 
 size_t StdFloatType::alignedObjectSize() const {
-	return sizeof(float);
+	return sizeof(number);
 }
 
 size_t StdFloatType::objectAlignment() const {
-	return sizeof(float);
+	return sizeof(number);
 }
 
 void StdFloatType::generateCastFrom(const ExprNodePtr &expr,

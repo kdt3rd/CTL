@@ -67,7 +67,7 @@ namespace Ctl {
 namespace {
 
 inline void
-indicesAndWeights (float r, int iMax, int &i, int &i1, float &u, float &u1)
+indicesAndWeights (number r, int iMax, int &i, int &i1, number &u, number &u1)
 {
     if (r >= 0)
     {
@@ -107,38 +107,38 @@ indicesAndWeights (float r, int iMax, int &i, int &i1, float &u, float &u1)
 } // namespace
 
 
-float
+number
 lookup1D
-    (const float table[],
+    (const number table[],
      int size,
-     float pMin,
-     float pMax,
-     float p)
+     number pMin,
+     number pMax,
+     number p)
 {
     int iMax = size - 1;
-    float r = (clamp (p, pMin, pMax) - pMin) / (pMax - pMin) * iMax;
+    number r = (clamp (p, pMin, pMax) - pMin) / (pMax - pMin) * iMax;
 
     int i, i1;
-    float u, u1;
+    number u, u1;
     indicesAndWeights (r, iMax, i, i1, u, u1);
 
     return table[i] * u1 + table[i1] * u;
 }
 
 
-float
+number
 lookupCubic1D
-    (const float table[],
+    (const number table[],
      int size,
-     float pMin,
-     float pMax,
-     float p)
+     number pMin,
+     number pMax,
+     number p)
 {
     if (size < 3)
 	return lookup1D (table, size, pMin, pMax, p);
 
     int iMax = size - 1;
-    float r = (clamp (p, pMin, pMax) - pMin) / (pMax - pMin) * iMax;
+    number r = (clamp (p, pMin, pMax) - pMin) / (pMax - pMin) * iMax;
     int i;
 
     if (r >= 0 && r < iMax)
@@ -166,8 +166,8 @@ lookupCubic1D
 	return table[0];
     }
 
-    float dy = (table[i+1] - table[i]);
-    float m0, m1;
+    number dy = (table[i+1] - table[i]);
+    number m0, m1;
 
     if (i > 0)
 	m0 = (dy + (table[i] - table[i-1])) * 0.5f;
@@ -181,9 +181,9 @@ lookupCubic1D
     if (i >= size - 2)
 	m1 = (3 * dy - m0) * 0.5f;
 
-    float t = r - i;
-    float t2 = t * t;
-    float t3 = t2 * t;
+    number t = r - i;
+    number t2 = t * t;
+    number t3 = t2 * t;
 
     return table[i] * (2 * t3 - 3 * t2 + 1) +
            m0 * (t3 - 2 * t2 + t) +
@@ -192,42 +192,42 @@ lookupCubic1D
 }
 
 
-V3f
+Vec3
 lookup3D
-    (const V3f table[],
-     const V3i &size,
-     const V3f &pMin,
-     const V3f &pMax,
-     const V3f &p)
+    (const Vec3 table[],
+     const Vec3i &size,
+     const Vec3 &pMin,
+     const Vec3 &pMax,
+     const Vec3 &p)
 {
     int iMax = size.x - 1;
-    float r = (clamp (p.x, pMin.x, pMax.x) - pMin.x) / (pMax.x - pMin.x) * iMax;
+    number r = (clamp (p.x, pMin.x, pMax.x) - pMin.x) / (pMax.x - pMin.x) * iMax;
 
     int i, i1;
-    float u, u1;
+    number u, u1;
     indicesAndWeights (r, iMax, i, i1, u, u1);
 
     int jMax = size.y - 1;
-    float s = (clamp (p.y, pMin.y, pMax.y) - pMin.y) / (pMax.y - pMin.y) * jMax;
+    number s = (clamp (p.y, pMin.y, pMax.y) - pMin.y) / (pMax.y - pMin.y) * jMax;
 
     int j, j1;
-    float v, v1;
+    number v, v1;
     indicesAndWeights (s, jMax, j, j1, v, v1);
 
     int kMax = size.z - 1;
-    float t = (clamp (p.z, pMin.z, pMax.z) - pMin.z) / (pMax.z - pMin.z) * kMax;
+    number t = (clamp (p.z, pMin.z, pMax.z) - pMin.z) / (pMax.z - pMin.z) * kMax;
 
     int k, k1;
-    float w, w1;
+    number w, w1;
     indicesAndWeights (t, kMax, k, k1, w, w1);
 
-    const V3f &a = table[(i  * size.y + j ) * size.z + k ];
-    const V3f &b = table[(i1 * size.y + j ) * size.z + k ];
-    const V3f &c = table[(i  * size.y + j1) * size.z + k ];
-    const V3f &d = table[(i1 * size.y + j1) * size.z + k ];
-    const V3f &e = table[(i  * size.y + j ) * size.z + k1];
-    const V3f &f = table[(i1 * size.y + j ) * size.z + k1];
-    const V3f &g = table[(i  * size.y + j1) * size.z + k1];
+    const Vec3 &a = table[(i  * size.y + j ) * size.z + k ];
+    const Vec3 &b = table[(i1 * size.y + j ) * size.z + k ];
+    const Vec3 &c = table[(i  * size.y + j1) * size.z + k ];
+    const Vec3 &d = table[(i1 * size.y + j1) * size.z + k ];
+    const Vec3 &e = table[(i  * size.y + j ) * size.z + k1];
+    const Vec3 &f = table[(i1 * size.y + j ) * size.z + k1];
+    const Vec3 &g = table[(i  * size.y + j1) * size.z + k1];
     const V3f &h = table[(i1 * size.y + j1) * size.z + k1];
 
     return w1 * (v1 * (u1 * a + u * b) + v * (u1 * c + u * d)) +
@@ -235,11 +235,11 @@ lookup3D
 }
 
 
-float	
+number	
 interpolate1D
-    (const float table[][2],
+    (const number table[][2],
      int size,
-     float p)
+     number p)
 {
     if (size < 1)
 	return 0;
@@ -265,18 +265,18 @@ interpolate1D
 	    j = k;
     }
 
-    float t = (p - table[i][0]) / (table[i+1][0] - table[i][0]);
-    float s = 1 - t;
+    number t = (p - table[i][0]) / (table[i+1][0] - table[i][0]);
+    number s = 1 - t;
 
     return s * table[i][1] + t * table[i+1][1];
 }
 
 
-float	
+number	
 interpolateCubic1D
-    (const float table[][2],
+    (const number table[][2],
      int size,
-     float p)
+     number p)
 {
     if (size < 3)
 	return interpolate1D (table, size, p);
@@ -302,9 +302,9 @@ interpolateCubic1D
 	    j = k;
     }
 
-    float dx = (table[i+1][0] - table[i][0]);
-    float dy = (table[i+1][1] - table[i][1]);
-    float m0, m1;
+    number dx = (table[i+1][0] - table[i][0]);
+    number dy = (table[i+1][1] - table[i][1]);
+    number m0, m1;
 
     if (i > 0)
     {
@@ -328,9 +328,9 @@ interpolateCubic1D
 	m1 = (3 * dy - m0) * 0.5f;
     }
 
-    float t = (p - table[i][0]) / dx;
-    float t2 = t * t;
-    float t3 = t2 * t;
+    number t = (p - table[i][0]) / dx;
+    number t2 = t * t;
+    number t3 = t2 * t;
 
     return table[i][1] * (2 * t3 - 3 * t2 + 1) +
            m0 * (t3 - 2 * t2 + t) +

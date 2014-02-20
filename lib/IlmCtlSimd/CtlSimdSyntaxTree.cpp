@@ -897,9 +897,10 @@ SimdNameNode::generateCode (LContext &lcontext)
 SimdBoolLiteralNode::SimdBoolLiteralNode
     (int lineNumber,
      const LContext &lcontext,
-     bool value)
+     bool value,
+	 const std::string &raw)
 :
-    BoolLiteralNode (lineNumber, lcontext, value)
+	    BoolLiteralNode (lineNumber, lcontext, value, raw)
 {
     // empty
 }
@@ -927,9 +928,10 @@ SimdBoolLiteralNode::valuePtr()
 SimdIntLiteralNode::SimdIntLiteralNode
     (int lineNumber,
      const LContext &lcontext,
-     int value)
+     int value,
+     const std::string &raw)
 :
-    IntLiteralNode (lineNumber, lcontext, value)
+	    IntLiteralNode (lineNumber, lcontext, value, raw)
 {
     // empty
 }
@@ -956,9 +958,10 @@ SimdIntLiteralNode::valuePtr()
 SimdUIntLiteralNode::SimdUIntLiteralNode
     (int lineNumber,
      const LContext &lcontext,
-     unsigned int value)
+     unsigned int value,
+     const std::string &raw)
 :
-    UIntLiteralNode (lineNumber, lcontext, value)
+	    UIntLiteralNode (lineNumber, lcontext, value, raw)
 {
     // empty
 }
@@ -985,9 +988,10 @@ SimdUIntLiteralNode::valuePtr()
 SimdHalfLiteralNode::SimdHalfLiteralNode
     (int lineNumber,
      const LContext &lcontext,
-     half value)
+     half value,
+     const std::string &raw)
 :
-    HalfLiteralNode (lineNumber, lcontext, value)
+	    HalfLiteralNode (lineNumber, lcontext, value, raw)
 {
     // empty
 }
@@ -1013,9 +1017,10 @@ SimdHalfLiteralNode::valuePtr()
 SimdFloatLiteralNode::SimdFloatLiteralNode
     (int lineNumber,
      const LContext &lcontext,
-     float value)
+     number value,
+     const std::string &raw)
 :
-    FloatLiteralNode (lineNumber, lcontext, value)
+	    FloatLiteralNode (lineNumber, lcontext, value, raw)
 {
     // empty
 }
@@ -1029,7 +1034,7 @@ SimdFloatLiteralNode::generateCode (LContext &lcontext)
     //
 
     SimdLContext &slcontext = static_cast <SimdLContext &> (lcontext);
-    slcontext.addInst (new SimdPushLiteralInst <float> (value, lineNumber));
+    slcontext.addInst (new SimdPushLiteralInst <number> (value, lineNumber));
 }
 
 char*

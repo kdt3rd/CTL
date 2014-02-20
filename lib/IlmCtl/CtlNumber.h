@@ -52,93 +52,42 @@
 // THAN A.M.P.A.S., WHETHER DISCLOSED OR UNDISCLOSED.
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef INCLUDED_CTL_COLOR_SPACE_H
-#define INCLUDED_CTL_COLOR_SPACE_H
 
-//-----------------------------------------------------------------------------
-//
-//	Color space conversions
-//
-//	RGB to CIE XYZ:
-//
-//	    Given a set of chromaticities, c, and the luminance, Y, of the
-//	    RGB triple (1,1,1), or "white", RGBtoXYZ(c,Y) computes a matrix,
-//	    M, so that multiplying an RGB value, v, with M produces an
-//	    equivalent XYZ value, w.  (w == v * M)
-//     
-//	    If we define that
-//     
-//	       (Xr, Yr, Zr) == (1, 0, 0) * M
-//	       (Xg, Yg, Zg) == (0, 1, 0) * M
-//	       (Xb, Yb, Zb) == (0, 0, 1) * M
-//	       (Xw, Yw, Zw) == (1, 1, 1) * M,
-//     
-//	    then the following statements are true:
-//     
-//	       Xr / (Xr + Yr + Zr) == c.red.x
-//	       Yr / (Xr + Yr + Zr) == c.red.y
-//     
-//	       Xg / (Xg + Yg + Zg) == c.red.x
-//	       Yg / (Xg + Yg + Zg) == c.red.y
-//     
-//	       Xb / (Xb + Yb + Zb) == c.red.x
-//	       Yb / (Xb + Yb + Zb) == c.red.y
-//     
-//	       Xw / (Xw + Yw + Zw) == c.red.x
-//	       Yw / (Xw + Yw + Zw) == c.red.y
-//     
-//	       Yw == Y.
-//     
-//	CIE XYZ to RGB:
-//     
-//	    XYZtoRGB(c,Y) returns RGBtoXYZ(c,Y).inverse().
-//
-//	XYZ to CIE L*u*v*:
-//
-//	    Given a CIE XYZ tristimulus, XYZ, and a white stimulus,
-//	    XYZn, XYZtoLuv(XYZ,XYZn) converts XYZ to an equivalent
-//	    CIE L*u*v* triple.
-//
-//	CIE L*u*v* to XYZ:
-//
-//	    Given a CIE L*u*v* triple, Luv, and a white stimulus,
-//	    XYZn, LuvtoXYZ(Luv,XYZn) converts Luv to an equivalent
-//	    CIE XYZ tristimulus.
-//
-//	XYZ to CIE L*a*b*:
-//
-//	    Given a CIE XYZ tristimulus, XYZ, and a white stimulus,
-//	    XYZn, XYZtoLab(XYZ,XYZn) converts XYZ to an equivalent
-//	    CIE L*a*b* triple.
-//
-//	CIE L*a*b* to XYZ:
-//
-//	    Given a CIE L*a*b* triple, Lab, and a white stimulus,
-//	    XYZn, LabtoXYZ(Lab,XYZn) converts Lab to an equivalent
-//	    CIE XYZ tristimulus.
-//
-//-----------------------------------------------------------------------------
+#ifndef INCLUDED_CTL_NUMBER_H
+#define INCLUDED_CTL_NUMBER_H
 
-#include <CtlNumber.h>
+// These will define all the standard math functions, which we will
+// then use such that the appropriate precision overloaded function is
+// used
+#include <cmath>
+#include <limits>
+
+#include <ImathVec.h>
+#include <ImathMatrix.h>
 
 namespace Ctl {
 
-struct Chromaticities
-{
-    Vec2	red;		// CIE xy coordinates of red primary
-    Vec2	green;		// CIE xy coordinates of green primary
-    Vec2	blue;		// CIE xy coordinates of blue primary
-    Vec2	white;		// CIE xy coordinates of white point
-};
+// if nothing is defined, we'll default to the old
+// float behavior
+#if defined(CTL_USE_DOUBLE)
+typedef double number;
+typedef long double big_number;
+#elif defined(CTL_USE_LONG_DOUBLE)
+typedef long double number;
+typedef long double big_number;
+#else
+typedef float number;
+typedef double big_number;
+#endif
 
-
-M44	RGBtoXYZ (const Chromaticities &chroma, number Y);
-M44	XYZtoRGB (const Chromaticities &chroma, number Y);
-Vec3	XYZtoLuv (const Vec3 &XYZ, const Vec3 &XYZn);
-Vec3	LuvtoXYZ (const Vec3 &Luv, const Vec3 &XYZn);
-Vec3	XYZtoLab (const Vec3 &XYZ, const Vec3 &XYZn);
-Vec3	LabtoXYZ (const Vec3 &Lab, const Vec3 &XYZn);
-
+typedef Imath::Vec2<int> Vec2i; // V2i
+typedef Imath::Vec3<int> Vec3i; // V3i
+typedef Imath::Vec4<int> Vec4i; // V4i
+typedef Imath::Vec2<number> Vec2; // instead of V2f
+typedef Imath::Vec3<number> Vec3; // instead of V3f
+typedef Imath::Vec4<number> Vec4; // instead of V4f
+typedef Imath::Matrix33<number> M33; // M33f
+typedef Imath::Matrix44<number> M44; // M44f
 
 } // namespace Ctl
 

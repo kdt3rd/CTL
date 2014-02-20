@@ -66,6 +66,7 @@
 //
 //-----------------------------------------------------------------------------
 
+#include <CtlNumber.h>
 #include <CtlLex.h>
 #include <CtlSyntaxTree.h>
 #include <CtlType.h>
@@ -218,7 +219,7 @@ class Parser
     int			currentLineNumber () const;
 
     int			tokenIntValue () const;
-    float		tokenFloatValue () const;
+    number		tokenFloatValue () const;
     const std::string &	tokenStringValue () const;
 
     void		next ()			{_lex.next();}

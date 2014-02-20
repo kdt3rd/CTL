@@ -66,19 +66,19 @@
 #include <CtlSimdStdTypes.h>
 #include <CtlSimdCFunc.h>
 #include <CtlColorSpace.h>
+#include <CtlNumber.h>
 
-using namespace Imath;
 using namespace std;
 
 namespace Ctl {
 namespace {
 
-DEFINE_SIMD_FUNC_2_ARG (RgbToXyz, RGBtoXYZ(a1,a2), M44f, Chromaticities, float);
-DEFINE_SIMD_FUNC_2_ARG (XyzToRgb, XYZtoRGB(a1,a2), M44f, Chromaticities, float);
-DEFINE_SIMD_FUNC_2_ARG (XyzToLuv, XYZtoLuv(a1,a2), V3f, V3f, V3f);
-DEFINE_SIMD_FUNC_2_ARG (LuvToXyz, LuvtoXYZ(a1,a2), V3f, V3f, V3f);
-DEFINE_SIMD_FUNC_2_ARG (XyzToLab, XYZtoLab(a1,a2), V3f, V3f, V3f);
-DEFINE_SIMD_FUNC_2_ARG (LabToXyz, LabtoXYZ(a1,a2), V3f, V3f, V3f);
+DEFINE_SIMD_FUNC_2_ARG (RgbToXyz, RGBtoXYZ(a1,a2), M44, Chromaticities, number);
+DEFINE_SIMD_FUNC_2_ARG (XyzToRgb, XYZtoRGB(a1,a2), M44, Chromaticities, number);
+DEFINE_SIMD_FUNC_2_ARG (XyzToLuv, XYZtoLuv(a1,a2), Vec3, Vec3, Vec3);
+DEFINE_SIMD_FUNC_2_ARG (LuvToXyz, LuvtoXYZ(a1,a2), Vec3, Vec3, Vec3);
+DEFINE_SIMD_FUNC_2_ARG (XyzToLab, XYZtoLab(a1,a2), Vec3, Vec3, Vec3);
+DEFINE_SIMD_FUNC_2_ARG (LabToXyz, LabtoXYZ(a1,a2), Vec3, Vec3, Vec3);
 
 } // namespace
 

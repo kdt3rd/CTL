@@ -70,8 +70,11 @@
 #include <ImathBox.h>
 #include <vector>
 #include <algorithm>
+#include <CtlNumber.h>
 
 namespace Ctl {
+
+typedef Imath::Box<Vec3> Box3;
 
 class PointTree
 {
@@ -83,10 +86,10 @@ class PointTree
     // Warning: the constructor only stores a reference to
     // the points array; the array is not copied.  It is
     // up to the caller to make sure that the array remains
-    // vaoid as long as the PointTree exists.
+    // valid as long as the PointTree exists.
     //-----------------------------------------------------
     
-     PointTree (const Imath::V3f *points,
+     PointTree (const Vec3 *points,
                 size_t numPoints,
 	        size_t leafSize = 8,
 	        size_t maxDepth = 150);
@@ -108,8 +111,8 @@ class PointTree
     // returned in vector i.
     //--------------------------------------------------------
 
-    void		intersect (const Imath::V3f &point,
-				   double radius,
+    void		intersect (const Vec3 &point,
+				   big_number radius,
 				   std::vector <size_t> &indices) const;
 
 
@@ -125,7 +128,7 @@ class PointTree
     // for any j from 0 to n-2.
     //----------------------------------------------------
 
-    void		nearestPoints (const Imath::V3f &center,
+    void		nearestPoints (const Vec3 &center,
 				       size_t numPoints,
 				       std::vector <size_t> &indices) const;
 
@@ -138,7 +141,7 @@ class PointTree
 
 	Node *		_left;
 	Node *		_right;
-	double	        _midValue;
+	big_number	        _midValue;
 	size_t *	_dataIndex;
 	size_t		_dataSize;
     };
@@ -155,7 +158,7 @@ class PointTree
 	}
 
 	size_t dimension;
-	const Imath::V3f *points;
+	const Vec3 *points;
     };
 
 
@@ -163,12 +166,12 @@ class PointTree
     {
       private:
 
-	Imath::V3f		_center;
-	const Imath::V3f*	_points;
+	Vec3		_center;
+	const Vec3*	_points;
 
       public:
 
-	CompareDistance (const Imath::V3f &center, const Imath::V3f *points)
+	CompareDistance (const Vec3 &center, const Vec3 *points)
 	{
 	    _center = center;
 	    _points = points;
@@ -177,11 +180,11 @@ class PointTree
 	bool
 	operator() (size_t a, size_t b)
 	{
-	    double al = (_points[a] - _center).length2();
-	    double bl = (_points[b] - _center).length2();
+	    big_number al = (_points[a] - _center).length2();
+	    big_number bl = (_points[b] - _center).length2();
 
-	    volatile double delta = fabs (al - bl);
-	    const double eps = 2.0 * Imath::limits<double>::epsilon();
+	    volatile big_number delta = std::fabs (al - bl);
+	    const big_number eps = 2.0 * Imath::limits<big_number>::epsilon();
 
     	    //
 	    // Impose strict weak ordering... if the lengths are the same,
@@ -196,27 +199,27 @@ class PointTree
     };
 
     void		intersect (Node *node,
-				   const Imath::Box3f &box,
+				   const Box3 &box,
 				   size_t dimension,
-				   const Imath::V3f &point,
-				   double radius,
+				   const Vec3 &point,
+				   big_number radius,
 				   std::vector <size_t> &array) const;
 
     void		split (Node *node,
 			       size_t dimension,
 			       size_t depth,
-			       const Imath::Box3f &box,
+			       const Box3 &box,
 			       size_t *array,
 			       size_t arraySize);
 
-    static double	boxVolume (const Imath::Box3f &box);
-    static double	radiusOfSphereWithVolume (double volume);
-    static double	radiusOfSphereWithTwiceVolume (double radius);
+    static big_number	boxVolume (const Box3 &box);
+    static big_number	radiusOfSphereWithVolume (big_number volume);
+    static big_number	radiusOfSphereWithTwiceVolume (big_number radius);
 
     size_t		_numPoints;
-    const Imath::V3f *	_points;
+    const Vec3 *	_points;
     size_t *		_indexArray;
-    Imath::Box3f	_bbox;
+    Box3	_bbox;
     size_t		_leafSize;
     size_t		_maxDepth;
     size_t		_depth;
@@ -230,7 +233,7 @@ class PointTree
 //---------------
 
 PointTree::PointTree
-    (const Imath::V3f *points,
+    (const Vec3 *points,
      size_t numPoints,
      size_t leafSize,
      size_t maxDepth)
@@ -292,7 +295,7 @@ PointTree::split
     (Node *node,
      size_t dimension,
      size_t depth,
-     const Imath::Box3f &box,
+     const Box3 &box,
      size_t *array,
      size_t arraySize)
 {
@@ -342,7 +345,7 @@ PointTree::split
 
     if (leftArraySize)
     {
-	Imath::Box3f leftBox (box);
+	Box3 leftBox (box);
 	leftBox.max[dimension] = node->_midValue;
 	size_t nextDimension = leftBox.majorAxis();
 	node->_left = new Node;
@@ -358,7 +361,7 @@ PointTree::split
 
     if (rightArraySize)
     {
-	Imath::Box3f rightBox (box);
+	Box3 rightBox (box);
 	rightBox.min[dimension] = node->_midValue;
 	size_t nextDimension = rightBox.majorAxis();
 	node->_right = new Node;
@@ -384,8 +387,8 @@ PointTree::split
 
 void
 PointTree::intersect
-    (const Imath::V3f &point,
-     double radius,
+    (const Vec3 &point,
+     big_number radius,
      std::vector <size_t> &array) const
 {
     array.clear();
@@ -396,21 +399,21 @@ PointTree::intersect
 void
 PointTree::intersect
     (Node *node,
-     const Imath::Box3f &box,
+     const Box3 &box,
      size_t dimension,
-     const Imath::V3f &point,
-     double radius,
+     const Vec3 &point,
+     big_number radius,
      std::vector <size_t> &array) const
 {
     if (node->_dataIndex)
     {
-	double radius2 = radius * radius;
+	big_number radius2 = radius * radius;
 	size_t index;
 
 	for (size_t i = 0; i < node->_dataSize; i++)
 	{
 	    index = node->_dataIndex[i];
-	    Imath::V3f vec = _points[index] - point;
+	    Vec3 vec = _points[index] - point;
 
 	    if (vec.dot(vec) < radius2)
 		array.push_back(index);
@@ -418,14 +421,14 @@ PointTree::intersect
     }
     else
     {
-	Imath::V3f rvec(radius);
+	Vec3 rvec(radius);
 
 	if (node->_left)
 	{
-	    Imath::Box3f newBox(box);
+	    Box3 newBox(box);
 	    newBox.max[dimension] = node->_midValue;
 	    size_t nextDimension = newBox.majorAxis();
-	    Imath::Box3f tNewBox(newBox);
+	    Box3 tNewBox(newBox);
 	    tNewBox.min -= rvec;
 	    tNewBox.max += rvec;
 
@@ -442,10 +445,10 @@ PointTree::intersect
 
 	if (node->_right)
 	{
-	    Imath::Box3f newBox(box);
+	    Box3 newBox(box);
 	    newBox.min[dimension] = node->_midValue;
 	    size_t nextDimension = newBox.majorAxis();
-	    Imath::Box3f tNewBox(newBox);
+	    Box3 tNewBox(newBox);
 	    tNewBox.min -= rvec;
 	    tNewBox.max += rvec;
 
@@ -464,7 +467,7 @@ PointTree::intersect
 
 void
 PointTree::nearestPoints
-    (const Imath::V3f &center,
+    (const Vec3 &center,
      size_t numPoints,
      std::vector <size_t> &pointIndices) const
 {
@@ -490,7 +493,7 @@ PointTree::nearestPoints
 	    //
 
 	    const Node *node = _topNode;
-	    Imath::Box3f bbox = _bbox;
+	    Box3 bbox = _bbox;
 	    
 	    while (true)
 	    {
@@ -509,10 +512,10 @@ PointTree::nearestPoints
 
 		size_t dimension = bbox.majorAxis();
 
-		Imath::Box3f leftBbox (bbox);
+		Box3 leftBbox (bbox);
 		leftBbox.max[dimension] = node->_midValue;
 
-		Imath::Box3f rightBbox (bbox);
+		Box3 rightBbox (bbox);
 		rightBbox.min[dimension] = node->_midValue;
 
 		if (node->_left &&
@@ -535,14 +538,14 @@ PointTree::nearestPoints
 		}
 	    }
 
-	    double nodeVolume = boxVolume (bbox);
-	    double searchVolume = 2 * nodeVolume * numPoints / node->_dataSize;
-	    double searchRadius = radiusOfSphereWithVolume (searchVolume);
+	    big_number nodeVolume = boxVolume (bbox);
+	    big_number searchVolume = 2 * nodeVolume * numPoints / node->_dataSize;
+	    big_number searchRadius = radiusOfSphereWithVolume (searchVolume);
 
 	    //
 	    // Find all points within the search radius.
 	    // If we find less than numPoints points, increase
-	    // the search radius (double the search volume).
+	    // the search radius (big_number the search volume).
 	    //
 
 	    intersect (center, searchRadius, pointIndices);
@@ -571,10 +574,10 @@ PointTree::nearestPoints
 }
 
 
-double
-PointTree::boxVolume (const Imath::Box3f &box)
+big_number
+PointTree::boxVolume (const Box3 &box)
 {
-    double volume = 1;
+    big_number volume = 1;
 
     for (size_t i = 0; i < 3; ++i)
     	if (box.max[i] - box.min[i] > 0)
@@ -584,24 +587,28 @@ PointTree::boxVolume (const Imath::Box3f &box)
 }
 
 
-inline double
-PointTree::radiusOfSphereWithVolume (double volume)
+inline big_number
+PointTree::radiusOfSphereWithVolume (big_number volume)
 {
-    #ifdef _WIN32
+#ifdef _WIN32
 	if (volume <= 0)
 	    return 0;
 	else
-	    return (double) pow (0.238732 * volume, 1.0 / 3.0);
-    #else
-	return (double) cbrt (0.238732 * volume);
-    #endif
+	    return (big_number) std::pow (0.238732 * volume, 1.0 / 3.0);
+#else
+#if defined(__cplusplus) && (__cplusplus >= 201103L)
+	return (big_number) std::cbrt (0.238732 * volume);
+#else
+	return (big_number) cbrtl (0.238732 * volume);
+#endif
+#endif
 }                          // 3/(4*pi)
 
 
-inline double
-PointTree::radiusOfSphereWithTwiceVolume (double radius)
+inline big_number
+PointTree::radiusOfSphereWithTwiceVolume (big_number radius)
 {
-    return (double) (1.25992 * radius);
+    return (big_number) (1.25992 * radius);
 }                 // cbrt(2)
 
 

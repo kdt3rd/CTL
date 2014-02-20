@@ -66,6 +66,7 @@
 #include <CtlSimdStdTypes.h>
 #include <CtlSimdCFunc.h>
 #include <CtlMessage.h>
+#include <CtlNumber.h>
 #include <half.h>
 #include <cassert>
 
@@ -124,7 +125,7 @@ declareSimdStdLibPrint (SymbolTable &symtab, SimdStdTypes &types)
     declareSimdCFunc (symtab, printFunc <half>,
 		      types.funcType_v_h(), "print_half");
 
-    declareSimdCFunc (symtab, printFunc <float>,
+    declareSimdCFunc (symtab, printFunc <number>,
 		      types.funcType_v_f(), "print_float");
 
     declareSimdCFunc (symtab, printStringFunc,

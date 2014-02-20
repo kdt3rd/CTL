@@ -230,19 +230,19 @@ class LContext
 				     const = 0;
 
     virtual BoolLiteralNodePtr	newBoolLiteralNode
-				    (int lineNumber, bool value) const = 0;
+				    (int lineNumber, bool value, const std::string &literal) const = 0;
 
     virtual IntLiteralNodePtr	newIntLiteralNode
-				    (int lineNumber, int value) const = 0;
+				    (int lineNumber, int value, const std::string &literal) const = 0;
 
     virtual UIntLiteralNodePtr	newUIntLiteralNode
-				    (int lineNumber, unsigned value) const = 0;
+				    (int lineNumber, unsigned value, const std::string &literal) const = 0;
 
     virtual HalfLiteralNodePtr	newHalfLiteralNode
-				    (int lineNumber, half value) const = 0;
+				    (int lineNumber, half value, const std::string &literal) const = 0;
 
     virtual FloatLiteralNodePtr	newFloatLiteralNode
-				    (int lineNumber, float value) const = 0;
+				    (int lineNumber, float value, const std::string &literal) const = 0;
 
     virtual StringLiteralNodePtr newStringLiteralNode
 				    (int lineNumber,
