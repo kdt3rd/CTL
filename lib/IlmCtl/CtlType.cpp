@@ -83,7 +83,7 @@ Type::~Type ()
     // empty
 }
 
-void Type::childElement(size_t *offset, TypePtr *type, const std::string &path,
+void Type::childElement(size_t *offset, TypePtr *type, const std::string path,
                         ...) {
 	va_list ap;
 

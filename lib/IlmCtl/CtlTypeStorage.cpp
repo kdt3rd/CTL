@@ -68,6 +68,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <sstream>
 
 using namespace std;
 
@@ -135,7 +136,7 @@ void _convert(void *out, const void *in, CDataType_e out_type,
 		} else if(out_type==HalfTypeEnum) {
 			*((half  *)out)=*((int *)in);
 		} else if(out_type==FloatTypeEnum) {
-			*((float *)out)=*((int *)in);
+			*((number *)out)=*((int *)in);
 		} else if(out_type==StringTypeEnum) {
 			*((std::string *)out)=strprintf("%d", *((int *)in));
 		}
@@ -149,7 +150,7 @@ void _convert(void *out, const void *in, CDataType_e out_type,
 		} else if(out_type==HalfTypeEnum) {
 			*((half *)out)=*((unsigned int *)in);
 		} else if(out_type==FloatTypeEnum) {
-			*((float *)out)=*((unsigned int *)in);
+			*((number *)out)=*((unsigned int *)in);
 		} else if(out_type==StringTypeEnum) {
 			*((std::string *)out)=strprintf("%u", *((unsigned int *)in));
 		}
@@ -163,24 +164,26 @@ void _convert(void *out, const void *in, CDataType_e out_type,
 		} else if(out_type==HalfTypeEnum) {
 			*((half *)out)=*((half *)in);
 		} else if(out_type==FloatTypeEnum) {
-			*((float *)out)=*((half *)in);
+			*((number *)out)=*((half *)in);
 		} else if(out_type==StringTypeEnum) {
 			*((std::string *)out)=strprintf("%f",
 			                                (float)(*((unsigned int *)in)));
 		}
 	} else if(in_type==FloatTypeEnum) {
 		if(out_type==BoolTypeEnum) {
-			*((bool *)out)=!!*((float *)in);
+			*((bool *)out)=!!*((number *)in);
 		} else if(out_type==IntTypeEnum) {
-			*((int *)out)=(int)*((float *)in);
+			*((int *)out)=(int)*((number *)in);
 		} else if(out_type==UIntTypeEnum) {
-			*((unsigned int *)out)=(unsigned int)*((float *)in);
+			*((unsigned int *)out)=(unsigned int)*((number *)in);
 		} else if(out_type==HalfTypeEnum) {
-			*((half *)out)=*((float *)in);
+			*((half *)out)=*((number *)in);
 		} else if(out_type==FloatTypeEnum) {
-			*((float *)out)=*((float *)in);
+			*((number *)out)=*((number *)in);
 		} else if(out_type==StringTypeEnum) {
-			*((std::string *)out)=strprintf("%f", *((float *)in));
+			std::stringstream xx;
+			xx << *((number *)in);
+			*((std::string *)out)=xx.str();
 		} 
 	} else if(in_type==StringTypeEnum) {
 		if(out_type==in_type) {
@@ -189,7 +192,7 @@ void _convert(void *out, const void *in, CDataType_e out_type,
 			CDataType_e intermediate;
 			int int_i;
 			unsigned int int_u;
-			float int_f;
+			number int_f;
 			const char *str;
 
 			str=((const std::string *)in)->c_str();
@@ -219,7 +222,7 @@ void _convert(void *out, const void *in, CDataType_e out_type,
 				case HalfTypeEnum:
 				case FloatTypeEnum:
 					intermediate=FloatTypeEnum;
-					int_f=strtof(str, NULL);
+					int_f=strtold(str, NULL);
 					break;
 
 				default:
@@ -668,7 +671,7 @@ void TypeStorage::copy(const TypeStoragePtr &src, size_t src_offset,
 }
 
 void TypeStorage::set(const bool *src, size_t src_stride, size_t dst_offset,
-	                 size_t count, const std::string &path, ...) {
+	                 size_t count, const std::string path, ...) {
 	va_list ap;
 
 	va_start(ap, path);
@@ -683,7 +686,7 @@ void TypeStorage::setv(const bool *src, size_t src_stride, size_t dst_offset,
 }
 
 void TypeStorage::set(const int *src, size_t src_stride, size_t dst_offset,
-	                 size_t count, const std::string &path, ...) {
+	                 size_t count, const std::string path, ...) {
 	va_list ap;
 
 	va_start(ap, path);
@@ -699,7 +702,7 @@ void TypeStorage::setv(const int *src, size_t src_stride, size_t dst_offset,
 
 void TypeStorage::set(const unsigned int *src, size_t src_stride,
 	                 size_t dst_offset, size_t count,
-	                 const std::string &path, ...) {
+	                 const std::string path, ...) {
 	va_list ap;
 
 	va_start(ap, path);
@@ -715,7 +718,7 @@ void TypeStorage::setv(const unsigned int *src, size_t src_stride,
 }
 
 void TypeStorage::set(const half *src, size_t src_stride, size_t dst_offset,
-	                 size_t count, const std::string &path,
+	                 size_t count, const std::string path,
 	                 ...) {
 	va_list ap;
 
@@ -731,9 +734,9 @@ void TypeStorage::setv(const half *src, size_t src_stride, size_t dst_offset,
 	     ap);
 }
 
-void TypeStorage::set(const float *src, size_t src_stride,
+void TypeStorage::set(const number *src, size_t src_stride,
 	                 size_t dst_offset, size_t count,
-	                 const std::string &path, ...) {
+	                 const std::string path, ...) {
 	va_list ap;
 
 	va_start(ap, path);
@@ -741,7 +744,7 @@ void TypeStorage::set(const float *src, size_t src_stride,
 	va_end(ap);
 }
 
-void TypeStorage::setv(const float *src, size_t src_stride,
+void TypeStorage::setv(const number *src, size_t src_stride,
                        size_t dst_offset, size_t count,
                        const std::string &path, va_list ap) {
 	_set((const char *)src, FloatTypeEnum, src_stride, dst_offset, count,
@@ -750,7 +753,7 @@ void TypeStorage::setv(const float *src, size_t src_stride,
 
 void TypeStorage::set(const std::string *src, size_t src_stride,
 	                 size_t dst_offset, size_t count,
-	                 const std::string &path, ...) {
+	                 const std::string path, ...) {
 	va_list ap;
 
 	va_start(ap, path);
@@ -767,7 +770,7 @@ void TypeStorage::setv(const std::string *src, size_t src_stride,
 
 
 void TypeStorage::get(const bool *dst, size_t dst_stride, size_t src_offset,
-	                 size_t count, const std::string &path,
+	                 size_t count, const std::string path,
 	                 ...) {
 	va_list ap;
 
@@ -783,7 +786,7 @@ void TypeStorage::getv(const bool *dst, size_t dst_stride, size_t src_offset,
 }
 
 void TypeStorage::get(const int *dst, size_t dst_stride, size_t src_offset,
-	                 size_t count, const std::string &path,
+	                 size_t count, const std::string path,
 	                 ...) {
 	va_list ap;
 
@@ -800,7 +803,7 @@ void TypeStorage::getv(const int *dst, size_t dst_stride, size_t src_offset,
 
 void TypeStorage::get(const unsigned int *dst, size_t dst_stride,
 	                 size_t src_offset, size_t count,
-	                 const std::string &path, ...) {
+	                 const std::string path, ...) {
 	va_list ap;
 
 	va_start(ap, path);
@@ -815,7 +818,7 @@ void TypeStorage::getv(const unsigned int *dst, size_t dst_stride,
 }
 
 void TypeStorage::get(const half *dst, size_t dst_stride, size_t src_offset,
-	                 size_t count, const std::string &path, ...) {
+	                 size_t count, const std::string path, ...) {
 	va_list ap;
 
 	va_start(ap, path);
@@ -828,9 +831,9 @@ void TypeStorage::getv(const half *dst, size_t dst_stride, size_t src_offset,
 	_get((char *)dst, HalfTypeEnum, dst_stride, src_offset, count, path, ap);
 }
 
-void TypeStorage::get(const float *dst, size_t dst_stride,
+void TypeStorage::get(const number *dst, size_t dst_stride,
 	                 size_t src_offset, size_t count,
-	                 const std::string &path, ...) {
+	                 const std::string path, ...) {
 	va_list ap;
 
 	va_start(ap, path);
@@ -838,7 +841,7 @@ void TypeStorage::get(const float *dst, size_t dst_stride,
 	va_end(ap);
 }
 
-void TypeStorage::getv(const float *dst, size_t dst_stride,
+void TypeStorage::getv(const number *dst, size_t dst_stride,
                        size_t src_offset, size_t count,
                        const std::string &path, va_list ap) {
 	_get((char *)dst, FloatTypeEnum, dst_stride, src_offset, count, path, ap);
@@ -846,7 +849,7 @@ void TypeStorage::getv(const float *dst, size_t dst_stride,
 
 void TypeStorage::get(const std::string *dst, size_t dst_stride,
                       size_t src_offset, size_t count,
-                      const std::string &path, ...) {
+                      const std::string path, ...) {
 	va_list ap;
 
 	va_start(ap, path);

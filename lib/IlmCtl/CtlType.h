@@ -79,6 +79,7 @@
 
 #include <CtlReadWriteAccess.h>
 #include <CtlAddr.h>
+#include <CtlNumber.h>
 #include <string>
 #include <vector>
 #include <stdarg.h>
@@ -274,7 +275,7 @@ class Type: public RcObject
 	//      identify an element in a matrix.
 	//
 	static void         childElement(size_t *offset, TypePtr *type,
-	                                 const std::string &path, ...);
+	                                 const std::string path, ...);
 
 	static void         childElementV(size_t *offset, TypePtr *type,
 	                                  const std::string &path, va_list ap);
